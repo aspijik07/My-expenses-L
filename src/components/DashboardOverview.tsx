@@ -76,13 +76,13 @@ export const DashboardOverview: React.FC = () => {
           <div className="space-y-2">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-pink-500/10 text-pink-600 dark:text-pink-300 text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Moroccan Dirham (DH) • Banque Populaire Edition</span>
+              <span>Moroccan Dirham (DH) • Personal Budget</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Marhaban! Your Personal She Budget
+              Welcome to Your She Budget
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-300 max-w-xl">
-              Track your daily beauty, lifestyle, and Chaabi Bank expenses. Scan receipts with Gemini 3.6 Flash for instant sub-second entry.
+              Track your daily beauty, student living, and train transit expenses in Rabat. Scan receipts with Gemini 3.6 Flash for instant entry.
             </p>
           </div>
 
@@ -302,7 +302,7 @@ export const DashboardOverview: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* 1. Cash (Espèces) */}
+          {/* 1. Cash */}
           <div className="glass-card rounded-3xl p-5 border border-pink-200 hover:border-pink-300 transition-all">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -311,9 +311,9 @@ export const DashboardOverview: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Cash (Espèces)
+                    Cash
                   </h4>
-                  <span className="text-[11px] text-slate-500">ATM Withdrawals, Taxi, Hanout</span>
+                  <span className="text-[11px] text-slate-500">ATM Withdrawals, Taxis, Local Stores</span>
                 </div>
               </div>
               <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-600 dark:text-pink-400">
@@ -332,7 +332,7 @@ export const DashboardOverview: React.FC = () => {
             </div>
           </div>
 
-          {/* 2. Banque Populaire (Chaabi Bank) Card */}
+          {/* 2. Bank Card (Chaabi Bank) */}
           <div className="glass-card rounded-3xl p-5 border border-amber-500/30 hover:border-amber-500/50 transition-all">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -341,7 +341,7 @@ export const DashboardOverview: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-1">
-                    <span>Banque Populaire</span>
+                    <span>Card Payments</span>
                   </h4>
                   <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                     Chaabi Bank Card (BCP)
@@ -364,7 +364,7 @@ export const DashboardOverview: React.FC = () => {
             </div>
           </div>
 
-          {/* 3. Bank Transfer (Virement) */}
+          {/* 3. Bank Transfer */}
           <div className="glass-card rounded-3xl p-5 border border-purple-400/20 hover:border-purple-400/40 transition-all">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -375,7 +375,7 @@ export const DashboardOverview: React.FC = () => {
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                     Bank Transfer
                   </h4>
-                  <span className="text-[11px] text-slate-500">Chaabi Net Virement, Studio Rent</span>
+                  <span className="text-[11px] text-slate-500">Online Transfers, Student Rent</span>
                 </div>
               </div>
               <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
@@ -502,7 +502,7 @@ export const DashboardOverview: React.FC = () => {
           )}
         </div>
 
-        {/* Moroccan She Budget Smart Tips */}
+        {/* Rabat Student Lifestyle Smart Tips */}
         <div className="glass-card rounded-3xl p-6 border border-pink-200/50 flex flex-col justify-between">
           <div>
             <div className="flex items-center space-x-2.5 mb-4">
@@ -510,30 +510,30 @@ export const DashboardOverview: React.FC = () => {
                 <Sparkles className="w-5 h-5" />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Chaabi Bank Tips & Guide
+                Rabat Student Budget Tips
               </h3>
             </div>
 
             <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300">
-              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-                <span className="font-bold text-amber-700 dark:text-amber-300 block mb-1">
-                  Banque Populaire (Chaabi Bank)
+              <div className="p-3 rounded-2xl bg-teal-500/10 border border-teal-500/20">
+                <span className="font-bold text-teal-700 dark:text-teal-300 block mb-1">
+                  ONCF Train & Tramway
                 </span>
-                Pay with your Chaabi card at BIM, Marjane, and cosmetics stores to keep track of exact transaction totals.
+                Save money using monthly ONCF train student passes between Rabat and home, plus the Tramway Rabat-Salé student subscription.
               </div>
 
               <div className="p-3 rounded-2xl bg-pink-500/10 border border-pink-500/20">
                 <span className="font-bold text-pink-600 dark:text-pink-300 block mb-1">
                   Gemini 3.6 Flash Scanner
                 </span>
-                Take a quick photo of paper supermarket receipts. Gemini compresses the image on canvas to ~80KB for instant extraction!
+                Take a quick photo of paper supermarket receipts (BIM, Marjane). Gemini compresses the image on canvas to ~80KB for instant extraction!
               </div>
 
               <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20">
                 <span className="font-bold text-purple-600 dark:text-purple-300 block mb-1">
                   Custom Categories
                 </span>
-                Need a category for "Nail Salon", "Thrifting", or "Pet Care"? Tap "Categories" in the top bar to create one freely.
+                Need a category for study materials, nail salon, or coffee with friends? Tap "Categories" in the top bar to create one freely.
               </div>
             </div>
           </div>

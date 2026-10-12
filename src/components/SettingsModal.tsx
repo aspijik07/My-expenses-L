@@ -18,6 +18,11 @@ import {
   ExternalLink,
   Wallet,
   Check,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const SettingsModal: React.FC = () => {
@@ -34,6 +39,8 @@ export const SettingsModal: React.FC = () => {
     clearAllData,
     loadDemoData,
     addLog,
+    authCredentials,
+    updateAuthCredentials,
   } = useApp();
 
   const [keys, setKeys] = useState<[string, string, string, string]>([...settings.geminiKeys]);
@@ -41,6 +48,12 @@ export const SettingsModal: React.FC = () => {
   const [isTestingKeys, setIsTestingKeys] = useState<boolean>(false);
   const [testResults, setTestResults] = useState<{ [index: number]: { ok: boolean; message: string } }>({});
   const [importStatus, setImportStatus] = useState<string | null>(null);
+
+  // Auth credentials form state
+  const [usernameInput, setUsernameInput] = useState(authCredentials.username);
+  const [passwordInput, setPasswordInput] = useState(authCredentials.password);
+  const [showPassword, setShowPassword] = useState(false);
+  const [credSuccessMsg, setCredSuccessMsg] = useState(false);
 
   if (!isSettingsOpen) return null;
 
@@ -128,7 +141,7 @@ export const SettingsModal: React.FC = () => {
                 Personalization & Application Settings
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Pinterest Aesthetics, Banque Populaire, Gemini 3.6 Flash, and Categories
+                Pinterest Aesthetics, Security, Gemini 3.6 Flash, and Categories
               </p>
             </div>
           </div>
@@ -320,6 +333,95 @@ export const SettingsModal: React.FC = () => {
             <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
               Active & Default
             </span>
+          </div>
+
+          {/* Section 2.5: Mobile Login Gate & Security Credentials */}
+          <div className="p-4 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-pink-200/80 dark:border-slate-700 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center font-bold">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Login Gate Credentials (Mobile & Web)
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Simple Username + Password authentication (Android & iPhone ready, no email needed).
+                  </p>
+                </div>
+              </div>
+              {credSuccessMsg && (
+                <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center space-x-1 border border-emerald-500/20">
+                  <CheckCircle2 className="w-3 h-3 inline" />
+                  <span>Saved!</span>
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Login Username
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <User className="w-3.5 h-3.5" />
+                  </span>
+                  <input
+                    type="text"
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value)}
+                    placeholder="shebudget"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Login Password
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <Lock className="w-3.5 h-3.5" />
+                  </span>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    placeholder="Enter password..."
+                    className="w-full pl-9 pr-9 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[10px] text-slate-400">
+                Current active user: <strong className="text-pink-500 font-mono">@{authCredentials.username}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (usernameInput.trim() && passwordInput.trim()) {
+                    updateAuthCredentials(usernameInput.trim(), passwordInput);
+                    setCredSuccessMsg(true);
+                    setTimeout(() => setCredSuccessMsg(false), 2500);
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-pink-600 dark:text-pink-400 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/20 transition-all cursor-pointer"
+              >
+                Update Credentials
+              </button>
+            </div>
           </div>
 
           {/* Section 3: Custom Categories Manager Launcher */}

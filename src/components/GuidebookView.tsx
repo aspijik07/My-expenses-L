@@ -72,11 +72,11 @@ export const GuidebookView: React.FC = () => {
         },
         {
           title: '2. Card Expenses vs. Cash',
-          text: 'Use "Bank Card" for TPE terminal payments (BIM, Marjane, Zara, Nocibé) and "Cash (Espèces)" when you withdraw money from a Chaabi Bank ATM to pay local taxis or corner shops.',
+          text: 'Use "Bank Card" for TPE terminal payments (BIM, Marjane, Zara, Nocibé) and "Cash" when you withdraw money from a Chaabi Bank ATM to pay local taxis or corner shops.',
         },
         {
-          title: '3. Bank Transfer (Virement)',
-          text: 'For studio rent, school tuition, or big monthly bills, select "Bank Transfer" to keep your wire transfers organized.',
+          title: '3. Bank Transfer',
+          text: 'For studio rent, university tuition, or monthly bills, select "Bank Transfer" to keep your wire transfers organized.',
         },
       ],
     },
@@ -204,7 +204,7 @@ export const GuidebookView: React.FC = () => {
         },
         {
           title: '3. Payment Distribution',
-          text: 'Check the Dashboard to see your balance split between Cash (Espèces), Banque Populaire Card, and Wire Transfers.',
+          text: 'Check the Dashboard to see your balance split between Cash, Banque Populaire Card, and Wire Transfers.',
         },
       ],
     },

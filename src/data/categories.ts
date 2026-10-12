@@ -13,7 +13,7 @@ export const INITIAL_EXPENSE_CATEGORIES: CategoryDefinition[] = [
       'Haircare & Salon',
       'Perfumes & Fragrances',
       'Spa & Nails',
-      'Hygiene',
+      'Hygiene & Body Care',
     ],
   },
   {
@@ -36,24 +36,51 @@ export const INITIAL_EXPENSE_CATEGORIES: CategoryDefinition[] = [
     color: '#FFB4A2', // Peach Cream
     type: 'expense',
     subcategories: [
-      'Groceries (BIM / Marjane / Hanout)',
-      'Cafes & Coffee Shops',
+      'Groceries (BIM / Marjane / Local Market)',
+      'Campus & Agdal Cafes',
       'Restaurants & Dinners',
-      'Fast Food',
-      'Bakery & Sweets',
+      'Fast Food & Snacks',
+      'Bakery & Pastries',
+    ],
+  },
+  {
+    id: 'transport-mobility',
+    name: 'Transport & Mobility',
+    iconName: 'Train',
+    color: '#84DCC6', // Mint Pastel
+    type: 'expense',
+    subcategories: [
+      'ONCF Train (Al Boraq / TNR Rabat)',
+      'Tramway (Rabat-Salé Lines 1 & 2)',
+      'Taxi & InDrive / Heetch',
+      'Public Bus (Alsa Rabat)',
+    ],
+  },
+  {
+    id: 'education-growth',
+    name: 'Education & Growth',
+    iconName: 'GraduationCap',
+    color: '#6B9080', // Sage Green Pastel
+    type: 'expense',
+    subcategories: [
+      'University & Institute Fees',
+      'Textbooks & Photocopying',
+      'Online Courses & Certifications',
+      'Notebooks & Study Stationery',
+      'Student Workshop Fees',
     ],
   },
   {
     id: 'utilities-home',
-    name: 'Utilities & Home',
+    name: 'Utilities & Living',
     iconName: 'Home',
     color: '#9D84B7', // Pastel Lilac
     type: 'expense',
     subcategories: [
-      'Rent',
-      'Water & Electricity (Lydec / RADEEJ / ONEE)',
+      'Student Studio Rent',
+      'Water & Electricity (Redal / ONEE)',
       'Internet & Wi-Fi (Inwi / Maroc Telecom / Orange)',
-      'Home Decor',
+      'Room Decor',
       'Cleaning Supplies',
     ],
   },
@@ -71,26 +98,13 @@ export const INITIAL_EXPENSE_CATEGORIES: CategoryDefinition[] = [
     ],
   },
   {
-    id: 'transport-mobility',
-    name: 'Transport & Mobility',
-    iconName: 'Car',
-    color: '#84DCC6', // Mint Pastel
-    type: 'expense',
-    subcategories: [
-      'Taxi & InDrive / Heetch',
-      'Gasoline & Fuel',
-      'Public Bus / Tramway',
-      'Car Maintenance & Parking',
-    ],
-  },
-  {
     id: 'subscriptions-entertainment',
     name: 'Subscriptions & Entertainment',
     iconName: 'Tv',
     color: '#B5838D', // Dusty Rose
     type: 'expense',
     subcategories: [
-      'Streaming Services (Netflix, Spotify, YouTube Premium)',
+      'Streaming Services (Netflix, Spotify, YouTube)',
       'Cinema & Outings',
       'Books & Hobbies',
     ],
@@ -104,20 +118,8 @@ export const INITIAL_EXPENSE_CATEGORIES: CategoryDefinition[] = [
     subcategories: [
       'Family Gifts',
       'Friend Birthdays',
-      'Celebrations',
-      'Charity & Sadaqah',
-    ],
-  },
-  {
-    id: 'education-growth',
-    name: 'Education & Growth',
-    iconName: 'GraduationCap',
-    color: '#6B9080', // Sage Green Pastel
-    type: 'expense',
-    subcategories: [
-      'Online Courses',
-      'Books & Stationery',
-      'Workshop Fees',
+      'Celebrations & Gatherings',
+      'Charity & Donations',
     ],
   },
   {
@@ -141,17 +143,16 @@ export const INITIAL_INCOME_CATEGORIES: CategoryDefinition[] = [
     color: '#06D6A0', // Fresh Mint Green
     type: 'income',
     subcategories: [
-      'Salary / Job Income',
-      'Freelance / Side Hustle',
-      'Family Allowance',
-      'Gift Received',
-      'Investment Returns',
+      'Monthly Allowance',
+      'Internship Stipend / Salary',
+      'Freelance / Side Projects',
+      'Family Support',
+      'Gifts Received',
       'Other Income',
     ],
   },
 ];
 
-// Single dedicated bank as strictly requested
 export const MOROCCAN_BANKS = [
   'Banque Populaire (Chaabi Bank)',
 ] as const;

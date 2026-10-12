@@ -174,7 +174,7 @@ export const TransactionHistory: React.FC = () => {
               className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-slate-200"
             >
               <option value="all">All Methods</option>
-              <option value="Cash">Cash (Espèces)</option>
+              <option value="Cash">Cash</option>
               <option value="Card">Chaabi Card (BCP)</option>
               <option value="Bank Transfer">Bank Transfer</option>
             </select>

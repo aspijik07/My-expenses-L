@@ -38,6 +38,11 @@ interface AppContextType {
   logs: ActivityLog[];
   addLog: (action: ActivityLog['action'], title: string, details?: string, status?: ActivityLog['status']) => void;
   user: User | null;
+  currentUser: string | null;
+  login: (username: string, password: string) => { success: boolean; error?: string };
+  logout: () => void;
+  updateAuthCredentials: (username: string, password: string) => void;
+  authCredentials: { username: string; password: string };
   activeTab: 'dashboard' | 'transactions' | 'analytics' | 'logs' | 'guidebook';
   setActiveTab: (tab: 'dashboard' | 'transactions' | 'analytics' | 'logs' | 'guidebook') => void;
   isQuickAddOpen: boolean;
@@ -63,6 +68,13 @@ const STORAGE_KEYS = {
   SETTINGS: 'my_expenses_l_settings_v2',
   LOGS: 'my_expenses_l_logs_v2',
   CATEGORIES: 'my_expenses_l_categories_v2',
+  SESSION_USER: 'my_expenses_l_session_user_v2',
+  AUTH_CREDS: 'my_expenses_l_auth_credentials_v2',
+};
+
+const DEFAULT_AUTH_CREDS = {
+  username: 'shebudget',
+  password: 'rabat2026',
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -142,8 +154,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  // 6. Auth & Cloud State
+  // 6. Username / Password Authentication Gate State
+  const [currentUser, setCurrentUser] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.SESSION_USER);
+    } catch {
+      return null;
+    }
+  });
+
+  const [authCredentials, setAuthCredentials] = useState<{ username: string; password: string }>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.AUTH_CREDS);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_AUTH_CREDS;
+  });
+
   const [user, setUser] = useState<User | null>(null);
+
+  const login = (usernameInput: string, passwordInput: string) => {
+    const cleanUser = usernameInput.trim().toLowerCase();
+    const expectedUser = authCredentials.username.trim().toLowerCase();
+    if (cleanUser === expectedUser && passwordInput === authCredentials.password) {
+      setCurrentUser(authCredentials.username);
+      localStorage.setItem(STORAGE_KEYS.SESSION_USER, authCredentials.username);
+      addLog('SETTINGS_UPDATE', 'User Signed In', `Authenticated as @${authCredentials.username}`);
+      return { success: true };
+    }
+    return { success: false, error: 'Incorrect username or password. Please try again.' };
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
+    addLog('SETTINGS_UPDATE', 'User Signed Out', 'Session ended');
+  };
+
+  const updateAuthCredentials = (newUsername: string, newPassword: string) => {
+    const updated = { username: newUsername.trim(), password: newPassword };
+    setAuthCredentials(updated);
+    localStorage.setItem(STORAGE_KEYS.AUTH_CREDS, JSON.stringify(updated));
+    setCurrentUser(updated.username);
+    localStorage.setItem(STORAGE_KEYS.SESSION_USER, updated.username);
+    addLog('SETTINGS_UPDATE', 'Credentials Updated', `Username set to @${updated.username}`);
+  };
 
   // Apply Theme & Dynamic CSS variables to :root for Pinterest Colors
   useEffect(() => {
@@ -422,6 +479,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logs,
         addLog,
         user,
+        currentUser,
+        login,
+        logout,
+        updateAuthCredentials,
+        authCredentials,
         activeTab,
         setActiveTab,
         isQuickAddOpen,

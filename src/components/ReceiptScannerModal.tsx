@@ -118,7 +118,7 @@ export const ReceiptScannerModal: React.FC = () => {
   };
 
   // Moroccan Sample Receipts for instant test
-  const loadSampleReceipt = async (sampleType: 'bim' | 'marjane' | 'lydec' | 'inwi') => {
+  const loadSampleReceipt = async (sampleType: 'bim' | 'marjane' | 'redal' | 'oncf' | 'inwi') => {
     // Generate a simulated realistic Moroccan receipt on canvas
     const canvas = document.createElement('canvas');
     canvas.width = 600;
@@ -135,44 +135,50 @@ export const ReceiptScannerModal: React.FC = () => {
     ctx.font = 'bold 24px monospace';
     ctx.textAlign = 'center';
 
-    let merchantName = 'BIM STORES MAARIF';
-    let totalText = 'TOTAL: 310.50 DH';
+    let merchantName = 'BIM STORES AGDAL (RABAT)';
+    let totalText = 'TOTAL: 185.50 DH';
     let dateText = `DATE: ${new Date().toISOString().split('T')[0]}`;
     let items = [
-      '1. Lait Demi Ecreme 6L       54.00 DH',
-      '2. Huile Olive Vierge 1L     95.00 DH',
-      '3. Fromage & Yaourt          72.50 DH',
-      '4. Cafe Moulu & Biscuits     89.00 DH',
+      '1. UHT Semi-Skimmed Milk 6L   54.00 DH',
+      '2. Pasta & Tomato Sauce       38.50 DH',
+      '3. Yogurt & Fresh Cheese      44.00 DH',
+      '4. Cookies & Instant Coffee   49.00 DH',
     ];
 
     if (sampleType === 'marjane') {
-      merchantName = 'MARJANE CALIFORNIE';
-      totalText = 'TOTAL TTC: 620.00 DH';
+      merchantName = 'MARJANE HAY RIAD (RABAT)';
+      totalText = 'TOTAL: 340.00 DH';
       items = [
-        '1. Saumon Frais 500g        140.00 DH',
-        '2. Fruits & Legumes Frais   185.00 DH',
-        '3. Detergent & Lessive      165.00 DH',
-        '4. Chocolat & Desserts      130.00 DH',
+        '1. Fresh Fruits & Vegetables 120.00 DH',
+        '2. Laundry Detergent Pods    95.00 DH',
+        '3. Shampoo & Body Wash        85.00 DH',
+        '4. Dark Chocolate & Tea       40.00 DH',
       ];
-    } else if (sampleType === 'lydec') {
-      merchantName = 'LYDEC CASABLANCA';
-      totalText = 'NET A PAYER: 285.40 DH';
+    } else if (sampleType === 'redal') {
+      merchantName = 'REDAL RABAT UTILITIES';
+      totalText = 'AMOUNT: 215.40 DH';
       items = [
-        '1. Consommation Electricite  190.20 DH',
-        '2. Consommation Eau Potable   75.20 DH',
-        '3. Taxes & Redevances         20.00 DH',
+        '1. Electricity Consumption   145.20 DH',
+        '2. Water Consumption          55.20 DH',
+        '3. Municipal Sanitation Taxes 15.00 DH',
+      ];
+    } else if (sampleType === 'oncf') {
+      merchantName = 'ONCF TRAIN (RABAT AGDAL)';
+      totalText = 'TICKET PRICE: 149.00 DH';
+      items = [
+        '1. Al Boraq High Speed Train 149.00 DH',
       ];
     } else if (sampleType === 'inwi') {
       merchantName = 'INWI FIBRE DAR';
-      totalText = 'MONTANT: 249.00 DH';
+      totalText = 'MONTHLY BILL: 249.00 DH';
       items = [
-        '1. Abonnement Fibre 50M      249.00 DH',
+        '1. High Speed Home Fibre 50M 249.00 DH',
       ];
     }
 
     ctx.fillText(merchantName, 300, 70);
     ctx.font = '16px monospace';
-    ctx.fillText('CASABLANCA, MAROC', 300, 100);
+    ctx.fillText('RABAT, MOROCCO', 300, 100);
     ctx.fillText(dateText, 300, 130);
     ctx.fillText('--------------------------------', 300, 160);
 
@@ -435,10 +441,17 @@ export const ReceiptScannerModal: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => loadSampleReceipt('lydec')}
+                  onClick={() => loadSampleReceipt('redal')}
                   className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/20"
                 >
-                  Lydec
+                  Redal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => loadSampleReceipt('oncf')}
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 border border-teal-500/20"
+                >
+                  ONCF Train
                 </button>
                 <button
                   type="button"

@@ -87,10 +87,10 @@ function buildOcrPrompt(): string {
   return `
 You are an expert AI OCR financial auditor specialized in Moroccan receipts, supermarket bills, store invoices, and utility notices.
 Common merchants and bills in Morocco include:
-- Supermarkets & Groceries: BIM, Marjane, Marjane Market, Carrefour, Carrefour Market, Supeco, Acima, Label'Vie, BIM Stores, Hanout / local épicerie.
-- Utilities & Telecoms: Lydec, RADEEJ, SRM, ONEE, Redal, Amendis, Inwi, Maroc Telecom (IAM), Orange Maroc.
+- Supermarkets & Groceries: BIM, Marjane, Marjane Market, Carrefour, Supeco, Acima, Label'Vie, local neighborhood grocery stores.
+- Utilities & Telecoms: Redal (Rabat), Lydec, ONEE, Inwi, Maroc Telecom (IAM), Orange Maroc.
 - Beauty & Personal Care: Nocibé, Yan&One, Marionnaud, Yves Rocher, local pharmacies, beauty salons, Sephora.
-- Mobility: InDrive, Heetch, Careem, Tramway Rabat/Casablanca, Afriquia, Shell, TotalEnergies, Winxo.
+- Transit & Mobility: ONCF Trains (Al Boraq / TNR Rabat), Tramway Rabat-Salé, InDrive, Heetch, Careem, Alsa Bus Rabat.
 
 Extract all relevant financial information from this Moroccan receipt/invoice image and return ONLY a valid, raw JSON object (strictly NO markdown formatting, no code blocks, no backticks, no explanations).
 
@@ -228,7 +228,7 @@ export async function scanReceiptWithRotation(
         paymentMethod: sanitizePaymentMethod(parsed.paymentMethod),
         suggestedCategory: parsed.suggestedCategory || 'Food & Dining',
         suggestedSubcategory:
-          parsed.suggestedSubcategory || 'Groceries (BIM / Marjane / Hanout)',
+          parsed.suggestedSubcategory || 'Groceries (BIM / Marjane / Local Market)',
         items: Array.isArray(parsed.items)
           ? parsed.items.map((it: any) => ({
               name: String(it.name || 'Item'),

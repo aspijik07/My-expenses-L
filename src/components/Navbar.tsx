@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Sparkles,
   FolderPlus,
+  LogOut,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -27,7 +28,8 @@ export const Navbar: React.FC = () => {
     setIsCategoryManagerOpen,
     settings,
     updateSettings,
-    user,
+    currentUser,
+    logout,
   } = useApp();
 
   const validKeyCount = settings.geminiKeys.filter((k) => k && k.trim().length > 5).length;
@@ -58,7 +60,7 @@ export const Navbar: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Morocco (DH) • Banque Populaire (Chaabi Bank)
+                Rabat Student Edition • Moroccan Dirham (DH)
               </p>
             </div>
           </div>
@@ -203,6 +205,18 @@ export const Navbar: React.FC = () => {
             >
               <Sliders className="w-4 h-4" />
             </button>
+
+            {/* User Profile / Log Out */}
+            {currentUser && (
+              <button
+                onClick={logout}
+                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl text-xs font-bold bg-pink-500/10 text-pink-600 dark:text-pink-300 border border-pink-400/20 hover:bg-rose-500/10 hover:text-rose-500 transition-all"
+                title="Click to Sign Out"
+              >
+                <span className="hidden sm:inline">@{currentUser}</span>
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 

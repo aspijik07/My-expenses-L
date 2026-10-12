@@ -139,7 +139,7 @@ export const QuickAddModal: React.FC = () => {
                 {editingTransaction ? 'Edit Transaction' : 'Quick Add Transaction'}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Moroccan Dirhams (DH) • Banque Populaire
+                Moroccan Dirhams (DH) • She Budget
               </p>
             </div>
           </div>

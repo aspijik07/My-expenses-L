@@ -6,6 +6,7 @@ import { TransactionHistory } from './components/TransactionHistory';
 import { AnalyticsView } from './components/AnalyticsView';
 import { ActivityLogsView } from './components/ActivityLogsView';
 import { GuidebookView } from './components/GuidebookView';
+import { LoginScreen } from './components/LoginScreen';
 import { QuickAddModal } from './components/QuickAddModal';
 import { ReceiptScannerModal } from './components/ReceiptScannerModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -13,7 +14,12 @@ import { CategoryManagerModal } from './components/CategoryManagerModal';
 import { Sparkles } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
-  const { activeTab } = useApp();
+  const { activeTab, currentUser } = useApp();
+
+  // If user is not signed in with Username & Password, display Login Gate
+  if (!currentUser) {
+    return <LoginScreen />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-between selection:bg-pink-400 selection:text-white">
@@ -45,7 +51,7 @@ const MainAppContent: React.FC = () => {
             <span>•</span>
             <span>She Budget Edition</span>
             <span>•</span>
-            <span className="text-amber-600 font-semibold">Banque Populaire (Chaabi Bank)</span>
+            <span className="text-pink-500 font-semibold">Moroccan Dirham (DH)</span>
           </div>
 
           <div className="flex items-center space-x-4">
@@ -54,7 +60,7 @@ const MainAppContent: React.FC = () => {
               <span>Gemini 3.6 Flash Multi-Key Rotation</span>
             </span>
             <span>•</span>
-            <span className="text-slate-400">Custom Pinterest Colors</span>
+            <span className="text-slate-400">Rabat Student Edition</span>
           </div>
         </div>
       </footer>

@@ -75,7 +75,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     type: 'expense',
     amount: 310.50,
     category: 'Food & Dining',
-    subcategory: 'Groceries (BIM / Marjane / Hanout)',
+    subcategory: 'Groceries (BIM / Marjane / Local Market)',
     paymentMethod: 'Cash',
     merchant: 'BIM Stores Maarif',
     date: '2026-10-06',
