@@ -20,14 +20,19 @@ import {
   syncLogToFirestore,
   subscribeToTransactions,
   subscribeToActivityLogs,
+  SHARED_USER_ID,
+  isFirebaseConfigured,
 } from '../services/firebase';
 import { getClientDeviceInfo, fetchClientIp } from '../utils/deviceInfo';
 
 interface AppContextType {
   transactions: Transaction[];
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => Promise<Transaction>;
+  addTransactionsBatch: (txs: Omit<Transaction, 'id' | 'createdAt'>[]) => Promise<Transaction[]>;
   updateTransaction: (tx: Transaction) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  isCloudConnected: boolean;
+  syncLocalToCloud: () => Promise<void>;
   settings: AppSettings;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   setThemePreset: (presetId: GirlyThemePreset) => void;
@@ -301,32 +306,40 @@ const MASTER_OWNER = {
     localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
   }, [logs]);
 
-  // Initialize Firebase if configured
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(() => isFirebaseConfigured());
+
+  // Initialize Firebase Cloud Multi-Device Hub if configured
   useEffect(() => {
     const isReady = initFirebase(settings.firebaseConfig);
-    if (isReady && auth) {
-      const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-        setUser(currentUser);
-        if (currentUser) {
-          const unsubTx = subscribeToTransactions(currentUser.uid, (cloudTx) => {
-            if (cloudTx.length > 0) {
-              setTransactions(cloudTx);
-            }
-          });
-          const unsubLogs = subscribeToActivityLogs(currentUser.uid, (cloudLogs) => {
-            if (cloudLogs.length > 0) {
-              setLogs(cloudLogs);
-            }
-          });
-          return () => {
-            unsubTx();
-            unsubLogs();
-          };
+    setIsCloudConnected(isReady);
+    if (isReady) {
+      // Real-time live listener for all transactions across all devices!
+      const unsubTx = subscribeToTransactions(SHARED_USER_ID, (cloudTx) => {
+        if (cloudTx && cloudTx.length > 0) {
+          setTransactions(cloudTx);
         }
       });
-      return () => unsubscribeAuth();
+
+      const unsubLogs = subscribeToActivityLogs(SHARED_USER_ID, (cloudLogs) => {
+        if (cloudLogs && cloudLogs.length > 0) {
+          setLogs(cloudLogs);
+        }
+      });
+
+      return () => {
+        unsubTx();
+        unsubLogs();
+      };
     }
   }, [settings.firebaseConfig]);
+
+  const syncLocalToCloud = async () => {
+    if (!isFirebaseConfigured()) return;
+    for (const tx of transactions) {
+      await syncTransactionToFirestore(SHARED_USER_ID, tx);
+    }
+    addLog('SETTINGS_UPDATE', 'Local Data Merged to Cloud Hub', `${transactions.length} records pushed`);
+  };
 
   // Activity Log helper
   const addLog = (
@@ -350,8 +363,8 @@ const MASTER_OWNER = {
     };
     setLogs((prev) => [newLog, ...prev]);
 
-    if (user) {
-      syncLogToFirestore(user.uid, newLog).catch(console.error);
+    if (isFirebaseConfigured()) {
+      syncLogToFirestore(SHARED_USER_ID, newLog).catch(console.error);
     }
   };
 
@@ -374,11 +387,40 @@ const MASTER_OWNER = {
       }`
     );
 
-    if (user) {
-      await syncTransactionToFirestore(user.uid, newTx);
+    if (isFirebaseConfigured()) {
+      await syncTransactionToFirestore(SHARED_USER_ID, newTx);
     }
 
     return newTx;
+  };
+
+  const addTransactionsBatch = async (
+    itemsData: Omit<Transaction, 'id' | 'createdAt'>[]
+  ): Promise<Transaction[]> => {
+    if (itemsData.length === 0) return [];
+    const baseTime = Date.now();
+    const newTxs: Transaction[] = itemsData.map((item, idx) => ({
+      ...item,
+      id: 'tx-' + (baseTime + idx) + '-' + Math.random().toString(36).substring(2, 6),
+      createdAt: baseTime + idx,
+    }));
+
+    setTransactions((prev) => [...newTxs, ...prev]);
+    const totalAmount = newTxs.reduce((sum, t) => sum + t.amount, 0);
+    const store = newTxs[0].merchant || newTxs[0].batchName || 'Scanned Receipt';
+    addLog(
+      'SCAN_RECEIPT',
+      `Imported ${newTxs.length} items from ${store} (${totalAmount.toFixed(2)} DH total)`,
+      newTxs.map((t) => `${t.itemName || t.subcategory}: ${t.amount.toFixed(2)} DH`).join(', ')
+    );
+
+    if (isFirebaseConfigured()) {
+      for (const t of newTxs) {
+        await syncTransactionToFirestore(SHARED_USER_ID, t);
+      }
+    }
+
+    return newTxs;
   };
 
   const updateTransaction = async (updatedTx: Transaction) => {
@@ -392,8 +434,8 @@ const MASTER_OWNER = {
       `${finalTx.amount.toFixed(2)} DH (${finalTx.subcategory})`
     );
 
-    if (user) {
-      await syncTransactionToFirestore(user.uid, finalTx);
+    if (isFirebaseConfigured()) {
+      await syncTransactionToFirestore(SHARED_USER_ID, finalTx);
     }
   };
 
@@ -407,8 +449,8 @@ const MASTER_OWNER = {
       'warning'
     );
 
-    if (user) {
-      await deleteTransactionFromFirestore(user.uid, id);
+    if (isFirebaseConfigured()) {
+      await deleteTransactionFromFirestore(SHARED_USER_ID, id);
     }
   };
 
@@ -537,8 +579,11 @@ const MASTER_OWNER = {
       value={{
         transactions,
         addTransaction,
+        addTransactionsBatch,
         updateTransaction,
         deleteTransaction,
+        isCloudConnected,
+        syncLocalToCloud,
         settings,
         updateSettings,
         setThemePreset,

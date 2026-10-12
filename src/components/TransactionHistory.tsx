@@ -60,6 +60,7 @@ export const TransactionHistory: React.FC = () => {
       // Search match
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
+        const matchesItemName = tx.itemName?.toLowerCase().includes(query);
         const matchesMerchant = tx.merchant?.toLowerCase().includes(query);
         const matchesNotes = tx.notes?.toLowerCase().includes(query);
         const matchesCategory = tx.category.toLowerCase().includes(query);
@@ -67,6 +68,7 @@ export const TransactionHistory: React.FC = () => {
         const matchesAmount = tx.amount.toString().includes(query);
 
         if (
+          !matchesItemName &&
           !matchesMerchant &&
           !matchesNotes &&
           !matchesCategory &&
@@ -89,17 +91,19 @@ export const TransactionHistory: React.FC = () => {
 
   // Export filtered to CSV
   const exportToCSV = () => {
-    const headers = ['ID', 'Date', 'Type', 'Amount (DH)', 'Category', 'Subcategory', 'Payment Method', 'Bank', 'Merchant', 'Notes'];
+    const headers = ['ID', 'Date', 'Type', 'Item Name', 'Amount (DH)', 'Category', 'Subcategory', 'Payment Method', 'Bank', 'Merchant', 'Batch Color', 'Notes'];
     const rows = filteredTransactions.map((t) => [
       t.id,
       t.date,
       t.type,
+      `"${t.itemName || ''}"`,
       t.amount.toFixed(2),
       `"${t.category}"`,
       `"${t.subcategory}"`,
       t.paymentMethod,
       t.bankName || '',
       `"${t.merchant || ''}"`,
+      t.batchColor || '',
       `"${t.notes || ''}"`,
     ]);
 
@@ -309,16 +313,28 @@ export const TransactionHistory: React.FC = () => {
             return (
               <div
                 key={tx.id}
+                style={tx.batchColor ? { borderLeft: `4px solid ${tx.batchColor}` } : undefined}
                 className="glass-card rounded-3xl p-4 sm:p-5 border border-slate-200/60 dark:border-slate-800/80 hover:border-rosegold-400/40 transition-all shadow-sm"
               >
                 <div className="flex items-center justify-between">
                   {/* Left: Icon & Info */}
                   <div className="flex items-center space-x-3.5">
                     <div
-                      className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold flex-shrink-0 ${
-                        tx.type === 'income'
-                          ? 'bg-emerald-500/10 text-emerald-500'
-                          : 'bg-rosegold-400/10 text-rosegold-500'
+                      style={
+                        tx.batchColor
+                          ? {
+                              backgroundColor: `${tx.batchColor}18`,
+                              color: tx.batchColor,
+                              borderColor: `${tx.batchColor}40`,
+                            }
+                          : undefined
+                      }
+                      className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold flex-shrink-0 border ${
+                        !tx.batchColor
+                          ? tx.type === 'income'
+                            ? 'bg-emerald-500/10 text-emerald-500 border-transparent'
+                            : 'bg-rosegold-400/10 text-rosegold-500 border-transparent'
+                          : ''
                       }`}
                     >
                       {tx.type === 'income' ? (
@@ -331,8 +347,21 @@ export const TransactionHistory: React.FC = () => {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                          {tx.merchant || tx.subcategory}
+                          {tx.itemName || tx.merchant || tx.subcategory}
                         </span>
+
+                        {tx.batchColor && tx.merchant && (
+                          <span
+                            style={{
+                              backgroundColor: `${tx.batchColor}18`,
+                              color: tx.batchColor,
+                              borderColor: `${tx.batchColor}40`,
+                            }}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                          >
+                            {tx.merchant}
+                          </span>
+                        )}
 
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                           {tx.category}
@@ -346,6 +375,14 @@ export const TransactionHistory: React.FC = () => {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {tx.itemName && tx.merchant && (
+                          <>
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                              From {tx.merchant}
+                            </span>
+                            <span>•</span>
+                          </>
+                        )}
                         <span className="font-medium text-slate-700 dark:text-slate-300">
                           {tx.subcategory}
                         </span>

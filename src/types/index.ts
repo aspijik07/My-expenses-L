@@ -25,6 +25,10 @@ export interface Transaction {
   notes?: string;
   receiptThumbnail?: string;
   items?: ReceiptItem[];
+  itemName?: string; // Individual scanned item name (e.g. Eau Sidi Ali, Halls Cherry)
+  batchId?: string; // Unique ID linking items scanned from the same physical receipt
+  batchColor?: string; // Distinct theme color for this specific receipt scan batch
+  batchName?: string; // Name of the receipt/merchant for grouping
   createdAt: number;
   updatedAt?: number;
 }

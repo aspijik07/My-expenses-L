@@ -25,6 +25,7 @@ export const QuickAddModal: React.FC = () => {
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState<string>('');
+  const [itemName, setItemName] = useState<string>('');
   const [categoryName, setCategoryName] = useState<string>('Beauty & Personal Care');
   const [subcategoryName, setSubcategoryName] = useState<string>('Skincare');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Card');
@@ -42,6 +43,7 @@ export const QuickAddModal: React.FC = () => {
     if (editingTransaction) {
       setType(editingTransaction.type);
       setAmount(String(editingTransaction.amount));
+      setItemName(editingTransaction.itemName || '');
       setCategoryName(editingTransaction.category);
       setSubcategoryName(editingTransaction.subcategory);
       setPaymentMethod(editingTransaction.paymentMethod);
@@ -51,6 +53,7 @@ export const QuickAddModal: React.FC = () => {
     } else {
       setType('expense');
       setAmount('');
+      setItemName('');
       const firstExp = categories.find((c) => c.type === 'expense');
       if (firstExp) {
         setCategoryName(firstExp.name);
@@ -93,6 +96,7 @@ export const QuickAddModal: React.FC = () => {
     await addTransaction({
       type,
       amount: numAmount,
+      itemName: itemName.trim() || undefined,
       category: categoryName,
       subcategory: subcategoryName,
       paymentMethod,
@@ -115,6 +119,7 @@ export const QuickAddModal: React.FC = () => {
 
     // Clear transaction-specific fields for immediate next entry
     setAmount('');
+    setItemName('');
     setMerchant('');
     setNotes('');
   };
@@ -132,6 +137,7 @@ export const QuickAddModal: React.FC = () => {
         ...editingTransaction,
         type,
         amount: numAmount,
+        itemName: itemName.trim() || undefined,
         category: categoryName,
         subcategory: subcategoryName,
         paymentMethod,
@@ -144,6 +150,7 @@ export const QuickAddModal: React.FC = () => {
       await addTransaction({
         type,
         amount: numAmount,
+        itemName: itemName.trim() || undefined,
         category: categoryName,
         subcategory: subcategoryName,
         paymentMethod,
@@ -349,16 +356,17 @@ export const QuickAddModal: React.FC = () => {
             )}
           </div>
 
-          {/* Date & Merchant */}
+          {/* Item Name & Merchant */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Date
+                Item / Product Name (Optional)
               </label>
               <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                type="text"
+                placeholder="e.g., Eau Sidi Ali, Halls Cherry, Train"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-2xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-pink-500 text-slate-900 dark:text-white"
               />
             </div>
@@ -375,6 +383,19 @@ export const QuickAddModal: React.FC = () => {
                 className="w-full px-3.5 py-2.5 rounded-2xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-pink-500 text-slate-900 dark:text-white"
               />
             </div>
+          </div>
+
+          {/* Date */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Date
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-2xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-pink-500 text-slate-900 dark:text-white"
+            />
           </div>
 
           {/* Notes */}

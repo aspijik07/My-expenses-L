@@ -452,14 +452,26 @@ export const DashboardOverview: React.FC = () => {
                 <div
                   key={tx.id}
                   onClick={() => setEditingTransaction(tx)}
+                  style={tx.batchColor ? { borderLeft: `4px solid ${tx.batchColor}` } : undefined}
                   className="group flex items-center justify-between p-3.5 rounded-2xl bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 border border-slate-200/50 dark:border-slate-700/50 hover:border-pink-300/60 transition-all cursor-pointer shadow-xs"
                 >
                   <div className="flex items-center space-x-3.5">
                     <div
-                      className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm ${
-                        tx.type === 'income'
-                          ? 'bg-emerald-500/10 text-emerald-500'
-                          : 'bg-pink-500/10 text-pink-500'
+                      style={
+                        tx.batchColor
+                          ? {
+                              backgroundColor: `${tx.batchColor}18`,
+                              color: tx.batchColor,
+                              borderColor: `${tx.batchColor}40`,
+                            }
+                          : undefined
+                      }
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm border ${
+                        !tx.batchColor
+                          ? tx.type === 'income'
+                            ? 'bg-emerald-500/10 text-emerald-500 border-transparent'
+                            : 'bg-pink-500/10 text-pink-500 border-transparent'
+                          : ''
                       }`}
                     >
                       {tx.type === 'income' ? <TrendingUp className="w-5 h-5" /> : <ShoppingBag className="w-5 h-5" />}
@@ -468,15 +480,35 @@ export const DashboardOverview: React.FC = () => {
                     <div>
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-bold text-slate-900 dark:text-white">
-                          {tx.merchant || tx.subcategory}
+                          {tx.itemName || tx.merchant || tx.subcategory}
                         </span>
+                        {tx.batchColor && tx.merchant && (
+                          <span
+                            style={{
+                              backgroundColor: `${tx.batchColor}18`,
+                              color: tx.batchColor,
+                              borderColor: `${tx.batchColor}40`,
+                            }}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                          >
+                            {tx.merchant}
+                          </span>
+                        )}
                         {tx.paymentMethod === 'Card' && (
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
                             Chaabi Bank
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        {tx.itemName && tx.merchant && (
+                          <>
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                              From {tx.merchant}
+                            </span>
+                            <span>•</span>
+                          </>
+                        )}
                         <span>{tx.subcategory}</span>
                         <span>•</span>
                         <span>{tx.date}</span>

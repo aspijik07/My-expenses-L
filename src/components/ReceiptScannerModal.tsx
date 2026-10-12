@@ -6,6 +6,7 @@ import {
   FailoverEvent,
 } from '../services/geminiOcr';
 import { OcrResult } from '../types';
+import { getNextReceiptBatchColor, BatchColorDefinition } from '../utils/batchColors';
 import confetti from 'canvas-confetti';
 import {
   X,
@@ -25,7 +26,22 @@ import {
   Calendar,
   Store,
   Tag,
+  CheckSquare,
+  Square,
+  Trash2,
+  Plus,
+  Palette,
+  Split,
+  Receipt,
 } from 'lucide-react';
+
+export interface EditableReceiptItem {
+  id: string;
+  name: string;
+  price: number;
+  checked: boolean;
+  category?: string;
+}
 
 export const ReceiptScannerModal: React.FC = () => {
   const {
@@ -33,7 +49,9 @@ export const ReceiptScannerModal: React.FC = () => {
     setIsScannerOpen,
     settings,
     setIsSettingsOpen,
+    transactions,
     addTransaction,
+    addTransactionsBatch,
     addLog,
   } = useApp();
 
@@ -43,6 +61,8 @@ export const ReceiptScannerModal: React.FC = () => {
   const [isCompressing, setIsCompressing] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<OcrResult | null>(null);
+  const [editableItems, setEditableItems] = useState<EditableReceiptItem[]>([]);
+  const [activeBatchColor, setActiveBatchColor] = useState<BatchColorDefinition | null>(null);
   const [failoverLogs, setFailoverLogs] = useState<FailoverEvent[]>([]);
   const [activeKeyAttempt, setActiveKeyAttempt] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -59,6 +79,8 @@ export const ReceiptScannerModal: React.FC = () => {
     setIsScannerOpen(false);
     setImagePreview(null);
     setScanResult(null);
+    setEditableItems([]);
+    setActiveBatchColor(null);
     setFailoverLogs([]);
     setErrorMessage(null);
   };
@@ -103,10 +125,39 @@ export const ReceiptScannerModal: React.FC = () => {
       setActiveKeyAttempt(result.keyUsedIndex);
       setIsScanning(false);
 
+      // Determine unique batches and assign distinct batch color
+      const uniqueBatches = new Set(transactions.map((t) => t.batchId).filter(Boolean));
+      const chosenColor = getNextReceiptBatchColor(uniqueBatches.size);
+      setActiveBatchColor(chosenColor);
+
+      // Populate items
+      const rawItems = result.items || [];
+      const populatedItems: EditableReceiptItem[] = rawItems.map((it, idx) => ({
+        id: `it-${Date.now()}-${idx}`,
+        name: it.name,
+        price: it.price,
+        checked: true,
+        category: it.category || result.suggestedCategory,
+      }));
+
+      // If items sum is less than total (e.g., tax/timbre fiscal of 0.15 DH on Marjane ticket), include difference line
+      const itemsSum = populatedItems.reduce((s, it) => s + it.price, 0);
+      const remainingDiff = Math.round((result.total - itemsSum) * 100) / 100;
+      if (remainingDiff > 0.05) {
+        populatedItems.push({
+          id: `it-${Date.now()}-timbre`,
+          name: 'Stamp Duty / Timbre Fiscal & Fees',
+          price: remainingDiff,
+          checked: true,
+          category: result.suggestedCategory,
+        });
+      }
+      setEditableItems(populatedItems);
+
       addLog(
         'SCAN_RECEIPT',
         `Receipt Scanned: ${result.merchant}`,
-        `Total: ${result.total.toFixed(2)} DH via Key #${result.keyUsedIndex + 1} (Compressed from ${origKB}KB to ${sizeKB}KB)`
+        `Total: ${result.total.toFixed(2)} DH via Key #${result.keyUsedIndex + 1} (${populatedItems.length} items parsed)`
       );
     } catch (err: any) {
       setIsCompressing(false);
@@ -205,8 +256,83 @@ export const ReceiptScannerModal: React.FC = () => {
     }, 'image/jpeg', 0.8);
   };
 
-  const handleConfirmAdd = async () => {
+  const handleToggleItem = (id: string) => {
+    setEditableItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, checked: !it.checked } : it))
+    );
+  };
+
+  const handleUpdateItem = (id: string, updates: Partial<EditableReceiptItem>) => {
+    setEditableItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, ...updates } : it))
+    );
+  };
+
+  const handleDeleteItem = (id: string) => {
+    setEditableItems((prev) => prev.filter((it) => it.id !== id));
+  };
+
+  const handleAddItem = () => {
+    setEditableItems((prev) => [
+      ...prev,
+      {
+        id: `it-${Date.now()}`,
+        name: 'Extra Item',
+        price: 5.0,
+        checked: true,
+        category: scanResult?.suggestedCategory,
+      },
+    ]);
+  };
+
+  const handleToggleAllItems = () => {
+    const allChecked = editableItems.every((it) => it.checked);
+    setEditableItems((prev) => prev.map((it) => ({ ...it, checked: !allChecked })));
+  };
+
+  // 1. Split individual items into their own transaction entries (Recommended by user)
+  const handleConfirmSplitItems = async () => {
     if (!scanResult) return;
+    const checkedItems = editableItems.filter((it) => it.checked && it.price > 0);
+    if (checkedItems.length === 0) return;
+
+    const batchId = 'batch-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const batchColorHex = activeBatchColor?.hex || '#A78BFA';
+
+    const txsToCreate = checkedItems.map((it) => ({
+      type: 'expense' as const,
+      amount: it.price,
+      itemName: it.name,
+      category: it.category || scanResult.suggestedCategory,
+      subcategory: scanResult.suggestedSubcategory,
+      paymentMethod: scanResult.paymentMethod,
+      bankName: scanResult.paymentMethod === 'Card' ? ('Banque Populaire (Chaabi Bank)' as const) : undefined,
+      merchant: scanResult.merchant,
+      date: scanResult.date,
+      notes: `Receipt item from ${scanResult.merchant}`,
+      batchId,
+      batchColor: batchColorHex,
+      batchName: scanResult.merchant,
+      receiptThumbnail: imagePreview || undefined,
+    }));
+
+    await addTransactionsBatch(txsToCreate);
+
+    confetti({
+      particleCount: 65,
+      spread: 75,
+      origin: { y: 0.6 },
+      colors: [batchColorHex, '#FF85A1', '#FFC2D1', '#06D6A0'],
+    });
+
+    handleClose();
+  };
+
+  // 2. Import as single lump-sum receipt
+  const handleConfirmSingleReceipt = async () => {
+    if (!scanResult) return;
+    const batchId = 'batch-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const batchColorHex = activeBatchColor?.hex || '#A78BFA';
 
     await addTransaction({
       type: 'expense',
@@ -219,6 +345,9 @@ export const ReceiptScannerModal: React.FC = () => {
       date: scanResult.date,
       notes: `Scanned via Gemini 3.6 Flash (Key #${scanResult.keyUsedIndex + 1})`,
       items: scanResult.items,
+      batchId,
+      batchColor: batchColorHex,
+      batchName: scanResult.merchant,
       receiptThumbnail: imagePreview || undefined,
     });
 
@@ -226,7 +355,7 @@ export const ReceiptScannerModal: React.FC = () => {
       particleCount: 50,
       spread: 70,
       origin: { y: 0.6 },
-      colors: ['#FF85A1', '#FFC2D1', '#9D84B7', '#06D6A0'],
+      colors: [batchColorHex, '#FF85A1', '#FFC2D1', '#06D6A0'],
     });
 
     handleClose();
@@ -548,51 +677,192 @@ export const ReceiptScannerModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Itemized List with Sub-prices */}
-            {scanResult.items.length > 0 && (
-              <div className="p-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
-                    <FileCheck className="w-4 h-4 text-lavender-500" />
-                    <span>Scanned Itemized Receipt Items ({scanResult.items.length})</span>
-                  </span>
-                  <span className="text-[11px] text-slate-500">Unit sub-prices</span>
+            {/* Visual Receipt Batch Color Group */}
+            {activeBatchColor && (
+              <div
+                style={{
+                  borderColor: `${activeBatchColor.hex}50`,
+                  backgroundColor: `${activeBatchColor.hex}10`,
+                }}
+                className="p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+              >
+                <div className="flex items-center space-x-3">
+                  <div
+                    style={{ backgroundColor: activeBatchColor.hex }}
+                    className="w-4 h-4 rounded-full ring-4 ring-white/30 shadow-xs flex-shrink-0"
+                  />
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Receipt Batch Theme:
+                      </span>
+                      <span
+                        style={{ color: activeBatchColor.hex }}
+                        className="text-xs font-extrabold"
+                      >
+                        {activeBatchColor.name}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      All items from this receipt will be color-coded together with this color on your dashboard.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
-                  {scanResult.items.map((it, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between text-xs p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700/50"
+                <div className="flex items-center space-x-1.5 self-end sm:self-auto">
+                  <Palette className="w-3.5 h-3.5 text-slate-400" />
+                  <span
+                    style={{
+                      color: activeBatchColor.hex,
+                      backgroundColor: `${activeBatchColor.hex}20`,
+                      borderColor: `${activeBatchColor.hex}40`,
+                    }}
+                    className="text-[10px] font-extrabold px-2 py-0.5 rounded-full border"
+                  >
+                    Ticket Batch
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Itemized List with Individual Select & Edit */}
+            {editableItems.length > 0 && (
+              <div className="p-4 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                  <div className="flex items-center space-x-2">
+                    <FileCheck className="w-4 h-4 text-pink-500" />
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Individual Ticket Items ({editableItems.length})
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      • {editableItems.filter((it) => it.checked).length} selected ({editableItems.filter((it) => it.checked).reduce((s, it) => s + it.price, 0).toFixed(2)} DH)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={handleToggleAllItems}
+                      className="text-[11px] font-semibold text-pink-500 hover:text-pink-600 underline"
                     >
-                      <span className="font-medium text-slate-800 dark:text-slate-200 truncate max-w-[240px]">
-                        {it.name} {it.quantity && it.quantity > 1 ? `(x${it.quantity})` : ''}
-                      </span>
-                      <span className="font-bold text-rosegold-500">
-                        {it.price.toFixed(2)} DH
-                      </span>
+                      {editableItems.every((it) => it.checked) ? 'Deselect All' : 'Select All'}
+                    </button>
+                    <span className="text-slate-300 dark:text-slate-600">|</span>
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      className="text-[11px] font-semibold text-lavender-500 hover:text-lavender-600 flex items-center space-x-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Item</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                  {editableItems.map((it) => (
+                    <div
+                      key={it.id}
+                      style={{
+                        borderColor: it.checked && activeBatchColor ? `${activeBatchColor.hex}40` : undefined,
+                      }}
+                      className={`flex items-center justify-between gap-2 p-2.5 rounded-xl border transition-all ${
+                        it.checked
+                          ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                          : 'bg-slate-50/50 dark:bg-slate-900/30 opacity-60 border-dashed border-slate-300 dark:border-slate-800'
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleItem(it.id)}
+                        className="p-1 text-slate-400 hover:text-pink-500 transition-colors flex-shrink-0"
+                      >
+                        {it.checked ? (
+                          <CheckSquare className="w-4 h-4 text-pink-500" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </button>
+
+                      {/* Item Name Input */}
+                      <input
+                        type="text"
+                        value={it.name}
+                        onChange={(e) => handleUpdateItem(it.id, { name: e.target.value })}
+                        placeholder="Item name"
+                        className="flex-1 text-xs font-semibold bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none focus:border-b focus:border-pink-400 min-w-0"
+                      />
+
+                      {/* Price Input in DH */}
+                      <div className="flex items-center space-x-1 flex-shrink-0">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={it.price}
+                          onChange={(e) => handleUpdateItem(it.id, { price: parseFloat(e.target.value) || 0 })}
+                          className="w-20 px-2 py-1 text-right text-xs font-extrabold text-pink-500 bg-slate-100 dark:bg-slate-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-400"
+                        />
+                        <span className="text-[10px] font-bold text-slate-400">DH</span>
+                      </div>
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteItem(it.id)}
+                        className="p-1 text-slate-400 hover:text-rose-500 transition-colors flex-shrink-0"
+                        title="Remove line"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Confirm & Save Button */}
-            <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/80">
+            {/* Actions: Split into Individual Items vs Single Total */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/80">
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 self-center sm:self-auto"
               >
                 Discard
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmAdd}
-                className="px-6 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-rosegold-400 via-blush-400 to-lavender-500 hover:shadow-glow-rosegold transition-all"
-              >
-                Confirm & Add to Expenses
-              </button>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                {/* Option 2: Lump Sum */}
+                <button
+                  type="button"
+                  onClick={handleConfirmSingleReceipt}
+                  className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-pink-300 transition-all flex items-center justify-center space-x-1.5"
+                >
+                  <Receipt className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Import as 1 Total ({scanResult.total.toFixed(2)} DH)</span>
+                </button>
+
+                {/* Option 1: Split individual items (Recommended!) */}
+                <button
+                  type="button"
+                  onClick={handleConfirmSplitItems}
+                  disabled={editableItems.filter((it) => it.checked && it.price > 0).length === 0}
+                  style={
+                    activeBatchColor
+                      ? {
+                          boxShadow: `0 8px 20px -6px ${activeBatchColor.hex}60`,
+                        }
+                      : undefined
+                  }
+                  className="px-6 py-2.5 rounded-2xl text-xs font-extrabold text-white bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 hover:opacity-95 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  <Split className="w-4 h-4" />
+                  <span>
+                    Import {editableItems.filter((it) => it.checked && it.price > 0).length} Items (
+                    {editableItems.filter((it) => it.checked).reduce((s, it) => s + it.price, 0).toFixed(2)} DH)
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         )}

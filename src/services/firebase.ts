@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInAnonymously,
   GoogleAuthProvider,
   signOut as fbSignOut,
   onAuthStateChanged,
@@ -28,6 +29,8 @@ import { Transaction, ActivityLog, AppSettings } from '../types';
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
+
+export const SHARED_USER_ID = 'shebudget_shared';
 
 export const googleProvider = new GoogleAuthProvider();
 
@@ -60,6 +63,14 @@ export function initFirebase(config?: AppSettings['firebaseConfig']): boolean {
 
     auth = getAuth(app);
     db = getFirestore(app);
+
+    // Auto sign in anonymously for friction-free cloud sync
+    if (auth && !auth.currentUser) {
+      signInAnonymously(auth).catch((err) => {
+        console.info('Anonymous auth note (rules may be public):', err.message);
+      });
+    }
+
     return true;
   } catch (err) {
     console.warn('Firebase initialization error, continuing in local mode:', err);
