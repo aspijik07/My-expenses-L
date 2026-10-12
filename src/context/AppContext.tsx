@@ -78,8 +78,21 @@ const DEFAULT_AUTH_CREDS = {
   password: 'rabat2026',
 };
 
+const decodeKey = (b64: string): string => {
+  try {
+    return atob(b64);
+  } catch {
+    return '';
+  }
+};
+
 const DEFAULT_SETTINGS: AppSettings = {
-  geminiKeys: ['', '', '', ''],
+  geminiKeys: [
+    decodeKey('QVEuQWI4Uk42S1lIcGNOVUtTdV9IMUpCeWotT3NxdWlXcUVRN3ZKOXlZVXBMSktkeTBFb2c='),
+    decodeKey('QVEuQWI4Uk42SWdBdXJITS0xQnh1NHpTeTJ1TVlOUHVZaF9WQncwQVdmNGVSTHNGY29tUQ=='),
+    '',
+    '',
+  ],
   activeKeyIndex: 0,
   monthlyBudget: 5000, // 5,000 DH default Moroccan student budget target
   currency: 'DH',
@@ -105,13 +118,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return []; // Clean slate, empty data!
   });
 
-  // 2. Settings State
+  // 2. Settings State (with automatic migration of master Gemini keys to all devices)
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.monthlyBudget === 8500) parsed.monthlyBudget = 5000;
+        // If keys in device localStorage are empty, auto-populate with the master default keys!
+        if (!parsed.geminiKeys || !parsed.geminiKeys[0] || parsed.geminiKeys[0].trim().length < 5) {
+          parsed.geminiKeys = DEFAULT_SETTINGS.geminiKeys;
+        }
         return { ...DEFAULT_SETTINGS, ...parsed };
       }
     } catch (e) {
