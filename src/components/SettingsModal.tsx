@@ -98,19 +98,32 @@ export const SettingsModal: React.FC = () => {
         return;
       }
 
-      let parsed: any;
-      if (firebaseJsonInput.includes('{')) {
-        const sanitized = firebaseJsonInput
-          .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
-          .replace(/'/g, '"');
-        parsed = JSON.parse(sanitized);
-      } else {
-        throw new Error('Please enter a valid JSON configuration object');
+      // Robust field extractor that handles full JavaScript scripts, comments, or pure JSON
+      const extractField = (fieldName: string): string => {
+        const regex = new RegExp(`['"]?${fieldName}['"]?\\s*:\\s*['"]([^'"]+)['"]`, 'i');
+        const match = firebaseJsonInput.match(regex);
+        return match ? match[1].trim() : '';
+      };
+
+      const apiKey = extractField('apiKey');
+      const authDomain = extractField('authDomain');
+      const projectId = extractField('projectId');
+      const storageBucket = extractField('storageBucket');
+      const messagingSenderId = extractField('messagingSenderId');
+      const appId = extractField('appId');
+
+      if (!apiKey || !projectId) {
+        throw new Error('Could not find apiKey or projectId. Please make sure the pasted text contains the firebaseConfig object.');
       }
 
-      if (!parsed.apiKey || !parsed.projectId) {
-        throw new Error('Missing apiKey or projectId in Firebase configuration');
-      }
+      const parsed = {
+        apiKey,
+        authDomain: authDomain || `${projectId}.firebaseapp.com`,
+        projectId,
+        storageBucket: storageBucket || `${projectId}.firebasestorage.app`,
+        messagingSenderId: messagingSenderId || '',
+        appId: appId || '',
+      };
 
       updateSettings({ firebaseConfig: parsed });
       setCloudConnectMsg('✓ Cloud Hub Connected! Real-time multi-device sync activated.');
