@@ -1,5 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Transaction, AppSettings, ActivityLog, User } from '../types';
+import {
+  Transaction,
+  AppSettings,
+  ActivityLog,
+  User,
+  CategoryDefinition,
+  GirlyThemePreset,
+  CustomColors,
+} from '../types';
+import { INITIAL_EXPENSE_CATEGORIES, INITIAL_INCOME_CATEGORIES } from '../data/categories';
+import { GIRLY_THEME_PRESETS } from '../data/themes';
 import { INITIAL_TRANSACTIONS, INITIAL_ACTIVITY_LOGS } from '../data/mockData';
 import {
   initFirebase,
@@ -19,30 +29,40 @@ interface AppContextType {
   deleteTransaction: (id: string) => Promise<void>;
   settings: AppSettings;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
+  setThemePreset: (presetId: GirlyThemePreset) => void;
+  setCustomColor: (key: keyof CustomColors, value: string) => void;
+  categories: CategoryDefinition[];
+  addCategory: (newCat: Omit<CategoryDefinition, 'id'>) => void;
+  addSubcategory: (categoryName: string, subName: string) => void;
+  deleteCategory: (categoryId: string) => void;
   logs: ActivityLog[];
   addLog: (action: ActivityLog['action'], title: string, details?: string, status?: ActivityLog['status']) => void;
   user: User | null;
-  activeTab: 'dashboard' | 'transactions' | 'analytics' | 'logs';
-  setActiveTab: (tab: 'dashboard' | 'transactions' | 'analytics' | 'logs') => void;
+  activeTab: 'dashboard' | 'transactions' | 'analytics' | 'logs' | 'guidebook';
+  setActiveTab: (tab: 'dashboard' | 'transactions' | 'analytics' | 'logs' | 'guidebook') => void;
   isQuickAddOpen: boolean;
   setIsQuickAddOpen: (open: boolean) => void;
   isScannerOpen: boolean;
   setIsScannerOpen: (open: boolean) => void;
   isSettingsOpen: boolean;
   setIsSettingsOpen: (open: boolean) => void;
+  isCategoryManagerOpen: boolean;
+  setIsCategoryManagerOpen: (open: boolean) => void;
   editingTransaction: Transaction | null;
   setEditingTransaction: (tx: Transaction | null) => void;
   exportDataToJson: () => void;
   importDataFromJson: (jsonStr: string) => boolean;
-  resetToDemoData: () => void;
+  clearAllData: () => void;
+  loadDemoData: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  TRANSACTIONS: 'my_expenses_l_transactions_v1',
-  SETTINGS: 'my_expenses_l_settings_v1',
-  LOGS: 'my_expenses_l_logs_v1',
+  TRANSACTIONS: 'my_expenses_l_transactions_v2',
+  SETTINGS: 'my_expenses_l_settings_v2',
+  LOGS: 'my_expenses_l_logs_v2',
+  CATEGORIES: 'my_expenses_l_categories_v2',
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -51,10 +71,17 @@ const DEFAULT_SETTINGS: AppSettings = {
   monthlyBudget: 8500, // 8,500 DH typical Moroccan budget target
   currency: 'DH',
   theme: 'dark',
+  themePreset: 'coquette-pink',
+  customColors: {
+    primary: '#FF85A1',       // Girly Pinterest Baby Pink
+    secondary: '#FFC2D1',     // Soft Strawberry Cream
+    accent: '#E05780',        // Vibrant Berry Pink
+    backgroundTint: '#FFF0F5',// Soft Coquette White Pink
+  },
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 1. Transactions State
+  // 1. Transactions State - 100% EMPTY BY DEFAULT per user instruction!
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
@@ -62,7 +89,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.error('Failed to load transactions from localStorage', e);
     }
-    return INITIAL_TRANSACTIONS;
+    return []; // Clean slate, empty data!
   });
 
   // 2. Settings State
@@ -76,35 +103,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return DEFAULT_SETTINGS;
   });
 
-  // 3. Activity Logs State
+  // 3. Dynamic Categories State (Pre-loaded with deep taxonomy, fully customizable)
+  const [categories, setCategories] = useState<CategoryDefinition[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed to load categories', e);
+    }
+    return [...INITIAL_EXPENSE_CATEGORIES, ...INITIAL_INCOME_CATEGORIES];
+  });
+
+  // 4. Activity Logs State
   const [logs, setLogs] = useState<ActivityLog[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.LOGS);
       if (saved) return JSON.parse(saved);
     } catch (e) {
-      console.error('Failed to load logs from localStorage', e);
+      console.error('Failed to load logs', e);
     }
-    return INITIAL_ACTIVITY_LOGS;
+    return [
+      {
+        id: 'welcome-log',
+        action: 'SETTINGS_UPDATE',
+        title: 'App Initialized (Clean Slate)',
+        details: 'Ready to log your first Banque Populaire (Chaabi Bank) expense or scan Moroccan receipts.',
+        timestamp: Date.now(),
+        status: 'success',
+      },
+    ];
   });
 
-  // 4. UI Modals and Navigation State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'analytics' | 'logs'>('dashboard');
+  // 5. UI Modals and Navigation State
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'analytics' | 'logs' | 'guidebook'>('dashboard');
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  // 5. Auth & Cloud State
+  // 6. Auth & Cloud State
   const [user, setUser] = useState<User | null>(null);
 
-  // Synchronize theme to document body
+  // Apply Theme & Dynamic CSS variables to :root for Pinterest Colors
   useEffect(() => {
     if (settings.theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [settings.theme]);
+
+    // Inject dynamic CSS custom properties for custom user-selected colors
+    const root = document.documentElement;
+    root.style.setProperty('--color-girly-primary', settings.customColors.primary);
+    root.style.setProperty('--color-girly-secondary', settings.customColors.secondary);
+    root.style.setProperty('--color-girly-accent', settings.customColors.accent);
+    root.style.setProperty('--color-girly-tint', settings.customColors.backgroundTint);
+  }, [settings.theme, settings.customColors]);
 
   // Persist to LocalStorage
   useEffect(() => {
@@ -114,6 +169,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+  }, [categories]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
@@ -126,7 +185,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
         setUser(currentUser);
         if (currentUser) {
-          // Listen to live Cloud Firestore updates
           const unsubTx = subscribeToTransactions(currentUser.uid, (cloudTx) => {
             if (cloudTx.length > 0) {
               setTransactions(cloudTx);
@@ -147,7 +205,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [settings.firebaseConfig]);
 
-  // Helper to add activity log
+  // Activity Log helper
   const addLog = (
     action: ActivityLog['action'],
     title: string,
@@ -202,7 +260,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
     addLog(
       'UPDATE',
-      `Updated ${finalTx.type} transaction #${finalTx.id.substring(0, 8)}`,
+      `Updated ${finalTx.type} transaction`,
       `${finalTx.amount.toFixed(2)} DH (${finalTx.subcategory})`
     );
 
@@ -227,21 +285,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
-    setSettings((prev) => {
-      const merged = { ...prev, ...newSettings };
-      return merged;
-    });
+    setSettings((prev) => ({ ...prev, ...newSettings }));
     addLog('SETTINGS_UPDATE', 'Preferences Updated', 'Budget or API key settings modified');
+  };
+
+  const setThemePreset = (presetId: GirlyThemePreset) => {
+    const found = GIRLY_THEME_PRESETS.find((p) => p.id === presetId);
+    if (found) {
+      setSettings((prev) => ({
+        ...prev,
+        themePreset: presetId,
+        customColors: { ...found.colors },
+      }));
+      addLog('SETTINGS_UPDATE', 'Girly Theme Preset Changed', `Switched to "${found.name}"`);
+    } else if (presetId === 'custom') {
+      setSettings((prev) => ({
+        ...prev,
+        themePreset: 'custom',
+      }));
+    }
+  };
+
+  const setCustomColor = (key: keyof CustomColors, value: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      themePreset: 'custom',
+      customColors: {
+        ...prev.customColors,
+        [key]: value,
+      },
+    }));
+  };
+
+  // Category & Subcategory Management
+  const addCategory = (newCat: Omit<CategoryDefinition, 'id'>) => {
+    const id = 'cat-' + Date.now();
+    const created: CategoryDefinition = {
+      ...newCat,
+      id,
+      isCustom: true,
+    };
+    setCategories((prev) => [...prev, created]);
+    addLog('SETTINGS_UPDATE', 'New Category Created', `${created.name} (${created.type})`);
+  };
+
+  const addSubcategory = (categoryName: string, subName: string) => {
+    setCategories((prev) =>
+      prev.map((cat) => {
+        if (cat.name === categoryName) {
+          if (cat.subcategories.includes(subName.trim())) return cat;
+          return {
+            ...cat,
+            subcategories: [...cat.subcategories, subName.trim()],
+          };
+        }
+        return cat;
+      })
+    );
+    addLog('SETTINGS_UPDATE', 'Subcategory Added', `Added "${subName}" to ${categoryName}`);
+  };
+
+  const deleteCategory = (categoryId: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== categoryId));
+    addLog('SETTINGS_UPDATE', 'Category Removed', `Deleted category #${categoryId}`);
   };
 
   const exportDataToJson = () => {
     const backup = {
       exportedAt: new Date().toISOString(),
-      version: '1.0',
+      version: '2.0',
       transactions,
+      categories,
       settings: {
         ...settings,
-        geminiKeys: ['', '', '', ''], // Redact sensitive keys in public export
+        geminiKeys: ['', '', '', ''],
       },
       logs,
     };
@@ -260,6 +377,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const data = JSON.parse(jsonStr);
       if (Array.isArray(data.transactions)) {
         setTransactions(data.transactions);
+        if (Array.isArray(data.categories)) {
+          setCategories(data.categories);
+        }
         if (data.settings?.monthlyBudget) {
           setSettings((prev) => ({ ...prev, monthlyBudget: data.settings.monthlyBudget }));
         }
@@ -273,11 +393,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const resetToDemoData = () => {
+  const clearAllData = () => {
+    setTransactions([]);
+    addLog('DELETE', 'All Transactions Cleared', 'Reset to empty clean slate');
+  };
+
+  const loadDemoData = () => {
     setTransactions(INITIAL_TRANSACTIONS);
     setLogs(INITIAL_ACTIVITY_LOGS);
-    setSettings(DEFAULT_SETTINGS);
-    addLog('UPDATE', 'Reset to Moroccan Demo Data', 'Restored default Casablanca sample transactions');
+    addLog('CREATE', 'Sample Moroccan Demo Data Loaded', 'Populated sample transactions for testing');
   };
 
   return (
@@ -289,6 +413,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteTransaction,
         settings,
         updateSettings,
+        setThemePreset,
+        setCustomColor,
+        categories,
+        addCategory,
+        addSubcategory,
+        deleteCategory,
         logs,
         addLog,
         user,
@@ -300,11 +430,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsScannerOpen,
         isSettingsOpen,
         setIsSettingsOpen,
+        isCategoryManagerOpen,
+        setIsCategoryManagerOpen,
         editingTransaction,
         setEditingTransaction,
         exportDataToJson,
         importDataFromJson,
-        resetToDemoData,
+        clearAllData,
+        loadDemoData,
       }}
     >
       {children}

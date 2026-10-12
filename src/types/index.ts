@@ -2,13 +2,8 @@ export type TransactionType = 'expense' | 'income';
 
 export type PaymentMethod = 'Cash' | 'Card' | 'Bank Transfer';
 
-export type MoroccanBank = 
-  | 'CIH Bank' 
-  | 'Attijariwafa Bank' 
-  | 'BMCE Bank of Africa' 
-  | 'Banque Populaire BCP' 
-  | 'SGMB' 
-  | 'Other';
+// Dedicated exclusively to Banque Populaire (Chaabi Bank) as requested
+export type MoroccanBank = 'Banque Populaire (Chaabi Bank)';
 
 export interface ReceiptItem {
   name: string;
@@ -46,6 +41,22 @@ export interface CategoryDefinition {
   color: string;
   type: TransactionType;
   subcategories: string[];
+  isCustom?: boolean;
+}
+
+export type GirlyThemePreset = 
+  | 'coquette-pink' 
+  | 'strawberry-milk' 
+  | 'lavender-pastel' 
+  | 'peach-blossom' 
+  | 'cherry-glam' 
+  | 'custom';
+
+export interface CustomColors {
+  primary: string;     // e.g. #FF85A1
+  secondary: string;   // e.g. #FFC2D1
+  accent: string;      // e.g. #E05780
+  backgroundTint: string; // e.g. #FFF0F5
 }
 
 export interface AppSettings {
@@ -54,6 +65,8 @@ export interface AppSettings {
   monthlyBudget: number; // in DH
   currency: string;
   theme: 'dark' | 'light';
+  themePreset: GirlyThemePreset;
+  customColors: CustomColors;
   firebaseConfig?: {
     apiKey: string;
     authDomain: string;

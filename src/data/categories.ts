@@ -1,11 +1,11 @@
 import { CategoryDefinition } from '../types';
 
-export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
+export const INITIAL_EXPENSE_CATEGORIES: CategoryDefinition[] = [
   {
     id: 'beauty-personal-care',
     name: 'Beauty & Personal Care',
     iconName: 'Sparkles',
-    color: '#E0A96D', // Rose Gold
+    color: '#FF85A1', // Girly Baby Pink
     type: 'expense',
     subcategories: [
       'Skincare',
@@ -20,7 +20,7 @@ export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
     id: 'fashion-shopping',
     name: 'Fashion & Shopping',
     iconName: 'ShoppingBag',
-    color: '#D78DA6', // Soft Blush
+    color: '#FFA8BA', // Soft Blush Pink
     type: 'expense',
     subcategories: [
       'Clothing & Apparel',
@@ -33,7 +33,7 @@ export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
     id: 'food-dining',
     name: 'Food & Dining',
     iconName: 'UtensilsCrossed',
-    color: '#F59E0B', // Amber
+    color: '#FFB4A2', // Peach Cream
     type: 'expense',
     subcategories: [
       'Groceries (BIM / Marjane / Hanout)',
@@ -47,7 +47,7 @@ export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
     id: 'utilities-home',
     name: 'Utilities & Home',
     iconName: 'Home',
-    color: '#3B82F6', // Blue
+    color: '#9D84B7', // Pastel Lilac
     type: 'expense',
     subcategories: [
       'Rent',
@@ -61,7 +61,7 @@ export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
     id: 'health-wellness',
     name: 'Health & Wellness',
     iconName: 'HeartPulse',
-    color: '#EC4899', // Pink
+    color: '#F28482', // Soft Coral Pink
     type: 'expense',
     subcategories: [
       'Pharmacy & Medicines',
@@ -74,7 +74,7 @@ export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
     id: 'transport-mobility',
     name: 'Transport & Mobility',
     iconName: 'Car',
-    color: '#06B6D4', // Cyan
+    color: '#84DCC6', // Mint Pastel
     type: 'expense',
     subcategories: [
       'Taxi & InDrive / Heetch',
@@ -87,7 +87,7 @@ export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
     id: 'subscriptions-entertainment',
     name: 'Subscriptions & Entertainment',
     iconName: 'Tv',
-    color: '#6C5CE7', // Lavender Purple
+    color: '#B5838D', // Dusty Rose
     type: 'expense',
     subcategories: [
       'Streaming Services (Netflix, Spotify, YouTube Premium)',
@@ -99,7 +99,7 @@ export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
     id: 'gifts-social',
     name: 'Gifts & Social',
     iconName: 'Gift',
-    color: '#A855F7', // Purple
+    color: '#E5989B', // Rose Blossom
     type: 'expense',
     subcategories: [
       'Family Gifts',
@@ -112,7 +112,7 @@ export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
     id: 'education-growth',
     name: 'Education & Growth',
     iconName: 'GraduationCap',
-    color: '#10B981', // Emerald
+    color: '#6B9080', // Sage Green Pastel
     type: 'expense',
     subcategories: [
       'Online Courses',
@@ -124,7 +124,7 @@ export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
     id: 'miscellaneous',
     name: 'Miscellaneous',
     iconName: 'MoreHorizontal',
-    color: '#94A3B8', // Slate
+    color: '#BDB2FF', // Pastel Periwinkle
     type: 'expense',
     subcategories: [
       'General Expense',
@@ -133,12 +133,12 @@ export const EXPENSE_CATEGORIES: CategoryDefinition[] = [
   },
 ];
 
-export const INCOME_CATEGORIES: CategoryDefinition[] = [
+export const INITIAL_INCOME_CATEGORIES: CategoryDefinition[] = [
   {
     id: 'income-sources',
     name: 'Income Sources',
     iconName: 'TrendingUp',
-    color: '#10B981', // Emerald
+    color: '#06D6A0', // Fresh Mint Green
     type: 'income',
     subcategories: [
       'Salary / Job Income',
@@ -151,13 +151,7 @@ export const INCOME_CATEGORIES: CategoryDefinition[] = [
   },
 ];
 
-export const ALL_CATEGORIES = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
-
+// Single dedicated bank as strictly requested
 export const MOROCCAN_BANKS = [
-  'CIH Bank',
-  'Attijariwafa Bank',
-  'BMCE Bank of Africa',
-  'Banque Populaire BCP',
-  'SGMB',
-  'Other',
+  'Banque Populaire (Chaabi Bank)',
 ] as const;

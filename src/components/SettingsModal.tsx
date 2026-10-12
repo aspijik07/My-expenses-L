@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { GIRLY_THEME_PRESETS } from '../data/themes';
+import { GirlyThemePreset, CustomColors } from '../types';
 import {
   X,
   Key,
-  ShieldCheck,
+  Palette,
+  FolderPlus,
+  RefreshCw,
   CheckCircle2,
   AlertCircle,
   Database,
   Download,
   Upload,
-  RefreshCw,
-  Moon,
-  Sun,
-  Flame,
-  Wallet,
+  CreditCard,
   Sparkles,
   ExternalLink,
+  Wallet,
+  Check,
 } from 'lucide-react';
 
 export const SettingsModal: React.FC = () => {
@@ -24,9 +26,13 @@ export const SettingsModal: React.FC = () => {
     setIsSettingsOpen,
     settings,
     updateSettings,
+    setThemePreset,
+    setCustomColor,
+    setIsCategoryManagerOpen,
     exportDataToJson,
     importDataFromJson,
-    resetToDemoData,
+    clearAllData,
+    loadDemoData,
     addLog,
   } = useApp();
 
@@ -52,7 +58,6 @@ export const SettingsModal: React.FC = () => {
     setIsSettingsOpen(false);
   };
 
-  // Live ping test for Gemini 3.6 Flash on each key
   const testAllKeys = async () => {
     setIsTestingKeys(true);
     const results: { [index: number]: { ok: boolean; message: string } } = {};
@@ -60,7 +65,7 @@ export const SettingsModal: React.FC = () => {
     for (let i = 0; i < keys.length; i++) {
       const k = keys[i].trim();
       if (!k) {
-        results[i] = { ok: false, message: 'Empty key slot' };
+        results[i] = { ok: false, message: 'Empty slot' };
         continue;
       }
 
@@ -73,14 +78,14 @@ export const SettingsModal: React.FC = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: 'Ping test. Reply with OK' }] }],
+            contents: [{ parts: [{ text: 'Ping test' }] }],
           }),
         });
 
         if (res.ok) {
-          results[i] = { ok: true, message: 'Active & Verified (gemini-3.6-flash)' };
+          results[i] = { ok: true, message: 'Verified (gemini-3.6-flash)' };
         } else {
-          results[i] = { ok: false, message: `HTTP ${res.status}: Quota or invalid` };
+          results[i] = { ok: false, message: `HTTP ${res.status}: Quota or key error` };
         }
       } catch (e: any) {
         results[i] = { ok: false, message: e.message || 'Network error' };
@@ -89,7 +94,7 @@ export const SettingsModal: React.FC = () => {
 
     setTestResults(results);
     setIsTestingKeys(false);
-    addLog('SETTINGS_UPDATE', 'Gemini Keys Tested', 'Multi-key ping test completed');
+    addLog('SETTINGS_UPDATE', 'Gemini Keys Tested', 'Multi-key verification completed');
   };
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,7 +108,7 @@ export const SettingsModal: React.FC = () => {
       if (success) {
         setImportStatus('Backup restored successfully!');
       } else {
-        setImportStatus('Failed to import backup: Invalid JSON format');
+        setImportStatus('Failed to import backup: Invalid JSON');
       }
     };
     reader.readAsText(file);
@@ -111,19 +116,19 @@ export const SettingsModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-2xl glass-card rounded-3xl p-6 sm:p-8 border border-rosegold-400/30 shadow-2xl overflow-y-auto max-h-[92vh]">
+      <div className="relative w-full max-w-3xl glass-card rounded-3xl p-6 sm:p-8 border border-pink-300/40 shadow-2xl overflow-y-auto max-h-[92vh]">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800/80">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-rosegold-400 to-lavender-500 text-white flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pink-400 to-rose-400 text-white flex items-center justify-center">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Application Settings & Preferences
+                Personalization & Application Settings
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Gemini 3.6 Flash Rotation, Monthly Budget, and Local Sync
+                Pinterest Aesthetics, Banque Populaire, Gemini 3.6 Flash, and Categories
               </p>
             </div>
           </div>
@@ -137,16 +142,224 @@ export const SettingsModal: React.FC = () => {
         </div>
 
         <div className="mt-5 space-y-6">
-          {/* Section 1: Gemini 3.6 Flash Multi-Key Rotation System */}
-          <div className="p-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
+          {/* Section 1: Pinterest Aesthetic Presets & Custom Color Studio */}
+          <div className="p-5 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-pink-200 dark:border-slate-700 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                  <Palette className="w-4 h-4 text-pink-500" />
+                  <span>Pinterest Girly Color Presets</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Select a curated pastel aesthetic or customize your own palette below
+                </p>
+              </div>
+
+              {settings.themePreset === 'custom' && (
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-500 border border-pink-500/20">
+                  Custom Palette Active
+                </span>
+              )}
+            </div>
+
+            {/* Presets Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {GIRLY_THEME_PRESETS.map((preset) => {
+                const isSelected = settings.themePreset === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setThemePreset(preset.id)}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      isSelected
+                        ? 'border-pink-500 bg-pink-50/80 dark:bg-pink-950/20 shadow-sm'
+                        : 'border-slate-200 dark:border-slate-700 hover:border-pink-300 bg-white/40 dark:bg-slate-900/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {preset.name}
+                      </span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-pink-500" />}
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 mb-2.5 line-clamp-1">
+                      {preset.description}
+                    </p>
+
+                    {/* Color Swatch Dots */}
+                    <div className="flex items-center space-x-1.5">
+                      <span
+                        className="w-4 h-4 rounded-full border border-white/60 shadow-xs"
+                        style={{ backgroundColor: preset.colors.primary }}
+                      />
+                      <span
+                        className="w-4 h-4 rounded-full border border-white/60 shadow-xs"
+                        style={{ backgroundColor: preset.colors.secondary }}
+                      />
+                      <span
+                        className="w-4 h-4 rounded-full border border-white/60 shadow-xs"
+                        style={{ backgroundColor: preset.colors.accent }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom Color Pickers Studio */}
+            <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 space-y-3">
+              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                Custom Palette Studio (Pick Your Own Hex Colors)
+              </span>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* Primary Color */}
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                    Primary Color
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="color"
+                      value={settings.customColors.primary}
+                      onChange={(e) => setCustomColor('primary', e.target.value)}
+                      className="w-7 h-7 rounded-lg border-0 cursor-pointer p-0 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={settings.customColors.primary}
+                      onChange={(e) => setCustomColor('primary', e.target.value)}
+                      className="w-full text-xs font-mono uppercase bg-transparent text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
+                </div>
+
+                {/* Secondary Color */}
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                    Secondary Soft
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="color"
+                      value={settings.customColors.secondary}
+                      onChange={(e) => setCustomColor('secondary', e.target.value)}
+                      className="w-7 h-7 rounded-lg border-0 cursor-pointer p-0 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={settings.customColors.secondary}
+                      onChange={(e) => setCustomColor('secondary', e.target.value)}
+                      className="w-full text-xs font-mono uppercase bg-transparent text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
+                </div>
+
+                {/* Accent Color */}
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                    Vibrant Accent
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="color"
+                      value={settings.customColors.accent}
+                      onChange={(e) => setCustomColor('accent', e.target.value)}
+                      className="w-7 h-7 rounded-lg border-0 cursor-pointer p-0 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={settings.customColors.accent}
+                      onChange={(e) => setCustomColor('accent', e.target.value)}
+                      className="w-full text-xs font-mono uppercase bg-transparent text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
+                </div>
+
+                {/* Background Tint */}
+                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                    Background Tint
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="color"
+                      value={settings.customColors.backgroundTint}
+                      onChange={(e) => setCustomColor('backgroundTint', e.target.value)}
+                      className="w-7 h-7 rounded-lg border-0 cursor-pointer p-0 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={settings.customColors.backgroundTint}
+                      onChange={(e) => setCustomColor('backgroundTint', e.target.value)}
+                      className="w-full text-xs font-mono uppercase bg-transparent text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Banque Populaire (Chaabi Bank) Integration */}
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 flex items-center justify-center font-bold">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                  Banque Populaire (Chaabi Bank) Sole Banking Provider
+                </h4>
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  All card transactions & payments are strictly linked to your Chaabi Bank account.
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
+              Active & Default
+            </span>
+          </div>
+
+          {/* Section 3: Custom Categories Manager Launcher */}
+          <div className="p-4 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold">
+                <FolderPlus className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                  Categories & Subcategories Manager
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Add custom expense or income categories, create subcategories, and customize colors.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsSettingsOpen(false);
+                setIsCategoryManagerOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition-all"
+            >
+              Manage Categories
+            </button>
+          </div>
+
+          {/* Section 4: Gemini 3.6 Flash Multi-Key Rotation System */}
+          <div className="p-4 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center space-x-1.5">
-                  <Key className="w-4 h-4 text-rosegold-400" />
-                  <span>Gemini 3.6 Flash Multi-Key Rotation (Up to 4 Slots)</span>
+                  <Key className="w-4 h-4 text-pink-500" />
+                  <span>Gemini 3.6 Flash Multi-Key Rotation (4 Slots)</span>
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Rotates automatically from Key 1 to 4 with 0ms delay upon HTTP 429 quota or errors.
+                <p className="text-[11px] text-slate-500">
+                  0ms instant failover if any key reaches quota (429) or is busy (503).
                 </p>
               </div>
 
@@ -154,19 +367,19 @@ export const SettingsModal: React.FC = () => {
                 type="button"
                 onClick={testAllKeys}
                 disabled={isTestingKeys}
-                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-lavender-500/10 text-lavender-500 hover:bg-lavender-500/20 border border-lavender-500/30 transition-all self-start sm:self-auto"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 border border-purple-500/30 self-start sm:self-auto"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isTestingKeys ? 'animate-spin' : ''}`} />
-                <span>{isTestingKeys ? 'Testing...' : 'Test Keys'}</span>
+                <span>{isTestingKeys ? 'Verifying...' : 'Test Keys'}</span>
               </button>
             </div>
 
-            <div className="space-y-2.5 pt-1">
+            <div className="space-y-2 pt-1">
               {[0, 1, 2, 3].map((idx) => (
                 <div key={idx} className="space-y-1">
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                     <span>
-                      API Key Slot #{idx + 1} {idx === 0 ? '(Primary Default)' : `(Failover #${idx})`}
+                      API Key Slot #{idx + 1} {idx === 0 ? '(Primary)' : `(Failover #${idx})`}
                     </span>
                     {testResults[idx] && (
                       <span
@@ -174,11 +387,7 @@ export const SettingsModal: React.FC = () => {
                           testResults[idx].ok ? 'text-emerald-500' : 'text-rose-500'
                         }`}
                       >
-                        {testResults[idx].ok ? (
-                          <CheckCircle2 className="w-3 h-3 inline" />
-                        ) : (
-                          <AlertCircle className="w-3 h-3 inline" />
-                        )}
+                        {testResults[idx].ok ? <CheckCircle2 className="w-3 h-3 inline" /> : <AlertCircle className="w-3 h-3 inline" />}
                         <span>{testResults[idx].message}</span>
                       </span>
                     )}
@@ -188,31 +397,31 @@ export const SettingsModal: React.FC = () => {
                     placeholder={`AIzaSy... (Gemini API Key ${idx + 1})`}
                     value={keys[idx]}
                     onChange={(e) => handleKeyChange(idx, e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-rosegold-400 text-slate-900 dark:text-white"
+                    className="w-full px-3.5 py-2 rounded-xl text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                   />
                 </div>
               ))}
             </div>
 
             <div className="pt-1 flex items-center justify-between text-[11px] text-slate-500">
-              <span>Don't have a Gemini API key yet?</span>
+              <span>Need a free Gemini key?</span>
               <a
                 href="https://aistudio.google.com/app/apikey"
                 target="_blank"
                 rel="noreferrer"
-                className="font-bold text-rosegold-500 hover:underline inline-flex items-center space-x-1"
+                className="font-bold text-pink-500 hover:underline inline-flex items-center space-x-1"
               >
-                <span>Get free keys at Google AI Studio</span>
+                <span>Google AI Studio</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </div>
 
-          {/* Section 2: Monthly Budget Goal & Currency */}
-          <div className="p-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
+          {/* Section 5: Monthly Budget Goal & Data Control */}
+          <div className="p-4 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-4">
             <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center space-x-1.5">
               <Wallet className="w-4 h-4 text-emerald-500" />
-              <span>Monthly Budget Goal & Moroccan Currency</span>
+              <span>Budget Goal & Clean Data Control</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -227,9 +436,9 @@ export const SettingsModal: React.FC = () => {
                     min="500"
                     value={budget}
                     onChange={(e) => setBudget(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3.5 py-2 rounded-xl text-sm font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-rosegold-400 text-slate-900 dark:text-white"
+                    className="w-full px-3.5 py-2 rounded-xl text-sm font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-rosegold-400">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-pink-500">
                     DH
                   </span>
                 </div>
@@ -237,63 +446,56 @@ export const SettingsModal: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Currency Standard
+                  Default Moroccan Bank
                 </label>
                 <input
                   type="text"
                   disabled
-                  value="Moroccan Dirham (DH)"
-                  className="w-full px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 cursor-not-allowed"
+                  value="Banque Populaire (Chaabi Bank)"
+                  className="w-full px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-not-allowed"
                 />
               </div>
             </div>
-          </div>
 
-          {/* Section 3: Data Backup, Restore & Reset */}
-          <div className="p-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center space-x-1.5">
-              <Database className="w-4 h-4 text-blue-500" />
-              <span>Data Management & Backup</span>
-            </h3>
-
-            {importStatus && (
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold">
-                {importStatus}
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center gap-3">
+            {/* Clean Data & Backup */}
+            <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={exportDataToJson}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-rosegold-400 shadow-sm"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-sm"
               >
-                <Download className="w-3.5 h-3.5 text-rosegold-400" />
-                <span>Export JSON Backup</span>
+                <Download className="w-3.5 h-3.5 text-pink-500" />
+                <span>Export JSON</span>
               </button>
 
-              <label className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-lavender-500 cursor-pointer shadow-sm">
-                <Upload className="w-3.5 h-3.5 text-lavender-500" />
-                <span>Import JSON Backup</span>
-                <input
-                  type="file"
-                  accept=".json"
-                  className="hidden"
-                  onChange={handleImportFile}
-                />
+              <label className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer shadow-sm">
+                <Upload className="w-3.5 h-3.5 text-purple-500" />
+                <span>Import JSON</span>
+                <input type="file" accept=".json" className="hidden" onChange={handleImportFile} />
               </label>
 
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm('Restore default Moroccan demo transactions? Your current records will be re-initialized.')) {
-                    resetToDemoData();
+                  if (confirm('Clear all recorded transactions and reset to an empty slate?')) {
+                    clearAllData();
                   }
                 }}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-colors"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-500/10"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Reset Demo Data</span>
+                <span>Clear All Data (Empty Slate)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Load sample Moroccan transactions to test charts?')) {
+                    loadDemoData();
+                  }
+                }}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-500 hover:bg-indigo-500/10"
+              >
+                <span>Load Sample Data</span>
               </button>
             </div>
           </div>
@@ -311,9 +513,9 @@ export const SettingsModal: React.FC = () => {
           <button
             type="button"
             onClick={handleSaveSettings}
-            className="px-6 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-rosegold-400 via-blush-400 to-lavender-500 hover:shadow-glow-rosegold transition-all"
+            className="px-6 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-400 shadow-sm"
           >
-            Save Settings
+            Save Preferences
           </button>
         </div>
       </div>

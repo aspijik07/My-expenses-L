@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Transaction, PaymentMethod } from '../types';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../data/categories';
 import {
   Search,
   Filter,
@@ -22,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export const TransactionHistory: React.FC = () => {
-  const { transactions, deleteTransaction, setEditingTransaction } = useApp();
+  const { transactions, deleteTransaction, setEditingTransaction, categories } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
@@ -108,9 +107,7 @@ export const TransactionHistory: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const allCategoryNames = Array.from(
-    new Set([...EXPENSE_CATEGORIES.map((c) => c.name), ...INCOME_CATEGORIES.map((c) => c.name)])
-  );
+  const allCategoryNames = Array.from(new Set(categories.map((c) => c.name)));
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -127,15 +124,15 @@ export const TransactionHistory: React.FC = () => {
 
         <button
           onClick={exportToCSV}
-          className="inline-flex items-center space-x-2 px-4 py-2 rounded-2xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-rosegold-400 shadow-sm transition-all self-start sm:self-auto"
+          className="inline-flex items-center space-x-2 px-4 py-2 rounded-2xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-pink-300 shadow-sm transition-all self-start sm:self-auto"
         >
-          <Download className="w-4 h-4 text-rosegold-400" />
+          <Download className="w-4 h-4 text-pink-500" />
           <span>Export CSV</span>
         </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="glass-card rounded-3xl p-5 border border-rosegold-400/20 space-y-4">
+      <div className="glass-card rounded-3xl p-5 border border-pink-200/50 space-y-4">
         {/* Search Input */}
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -144,7 +141,7 @@ export const TransactionHistory: React.FC = () => {
             placeholder="Search by merchant (BIM, Marjane, Zara), subcategory, notes, or amount..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:border-rosegold-400 text-slate-900 dark:text-white transition-all"
+            className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:border-pink-500 text-slate-900 dark:text-white transition-all"
           />
         </div>
 
@@ -178,7 +175,7 @@ export const TransactionHistory: React.FC = () => {
             >
               <option value="all">All Methods</option>
               <option value="Cash">Cash (Espèces)</option>
-              <option value="Card">Card (CIH / BCP)</option>
+              <option value="Card">Chaabi Card (BCP)</option>
               <option value="Bank Transfer">Bank Transfer</option>
             </select>
           </div>

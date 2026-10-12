@@ -1,5 +1,5 @@
 import { OcrResult, PaymentMethod } from '../types';
-import { EXPENSE_CATEGORIES } from '../data/categories';
+import { INITIAL_EXPENSE_CATEGORIES as EXPENSE_CATEGORIES } from '../data/categories';
 
 /**
  * Compresses an image file or Data URL to approximately targetKB (default 80KB)

@@ -208,6 +208,7 @@ export const ReceiptScannerModal: React.FC = () => {
       category: scanResult.suggestedCategory,
       subcategory: scanResult.suggestedSubcategory,
       paymentMethod: scanResult.paymentMethod,
+      bankName: scanResult.paymentMethod === 'Card' ? 'Banque Populaire (Chaabi Bank)' : undefined,
       merchant: scanResult.merchant,
       date: scanResult.date,
       notes: `Scanned via Gemini 3.6 Flash (Key #${scanResult.keyUsedIndex + 1})`,
@@ -219,7 +220,7 @@ export const ReceiptScannerModal: React.FC = () => {
       particleCount: 50,
       spread: 70,
       origin: { y: 0.6 },
-      colors: ['#E0A96D', '#6C5CE7', '#10B981'],
+      colors: ['#FF85A1', '#FFC2D1', '#9D84B7', '#06D6A0'],
     });
 
     handleClose();
