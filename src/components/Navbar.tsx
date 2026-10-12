@@ -135,13 +135,13 @@ export const Navbar: React.FC = () => {
               </button>
             </nav>
 
-            {/* Action Buttons & Quick Controls */}
-            <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
+            {/* Action Buttons & Quick Controls (Touch-Swipeable horizontally on mobile) */}
+            <div className="flex items-center space-x-1.5 sm:space-x-2.5 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x overscroll-x-contain py-1 pl-1 pr-1 shrink ml-auto max-w-[calc(100vw-145px)] sm:max-w-none">
               
               {/* Custom Categories Button */}
               <button
                 onClick={() => setIsCategoryManagerOpen(true)}
-                className="hidden md:flex items-center space-x-1.5 px-3 py-2 rounded-2xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-pink-300 shadow-xs"
+                className="hidden md:flex items-center space-x-1.5 px-3 py-2 rounded-2xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-pink-300 shadow-xs shrink-0"
                 title="Add & Manage Custom Categories"
               >
                 <FolderPlus className="w-4 h-4 text-pink-500" />
@@ -151,7 +151,7 @@ export const Navbar: React.FC = () => {
               {/* Gemini Key Status (only on 2xl to preserve space) */}
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="hidden 2xl:flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-medium border"
+                className="hidden 2xl:flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-medium border shrink-0"
                 style={{
                   borderColor: validKeyCount > 0 ? 'rgba(236, 72, 153, 0.4)' : 'rgba(239, 68, 68, 0.4)',
                   backgroundColor: validKeyCount > 0 ? 'rgba(236, 72, 153, 0.08)' : 'rgba(239, 68, 68, 0.08)',
@@ -175,7 +175,7 @@ export const Navbar: React.FC = () => {
               {/* Scan Receipt Button */}
               <button
                 onClick={() => setIsScannerOpen(true)}
-                className="flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3.5 py-2 rounded-2xl text-xs font-semibold bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 transition-all shadow-xs"
+                className="flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3.5 py-2 rounded-2xl text-xs font-semibold bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 transition-all shadow-xs shrink-0 cursor-pointer"
                 title="Scan Moroccan Receipt with Gemini 3.6 Flash"
               >
                 <Scan className="w-4 h-4" />
@@ -185,7 +185,7 @@ export const Navbar: React.FC = () => {
               {/* Quick Add Button */}
               <button
                 onClick={() => setIsQuickAddOpen(true)}
-                className="flex items-center space-x-1 px-3 sm:px-4 py-2 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 via-rose-400 to-purple-500 hover:opacity-95 shadow-xs transition-all"
+                className="flex items-center space-x-1 px-3 sm:px-4 py-2 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 via-rose-400 to-purple-500 hover:opacity-95 shadow-xs transition-all shrink-0 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add</span>
@@ -194,7 +194,7 @@ export const Navbar: React.FC = () => {
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
                 title="Toggle Dark / Light Mode"
               >
                 {settings.theme === 'dark' ? (
@@ -207,7 +207,7 @@ export const Navbar: React.FC = () => {
               {/* Settings Button */}
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
                 title="Application Settings & Custom Colors"
               >
                 <Sliders className="w-4 h-4" />
@@ -217,7 +217,7 @@ export const Navbar: React.FC = () => {
               {currentUser && (
                 <button
                   onClick={logout}
-                  className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl text-xs font-bold transition-all ${
+                  className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                     isOwner
                       ? 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/30 hover:bg-purple-500/20'
                       : 'bg-pink-500/10 text-pink-600 dark:text-pink-300 border border-pink-400/20 hover:bg-rose-500/10 hover:text-rose-500'

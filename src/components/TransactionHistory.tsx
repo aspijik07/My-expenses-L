@@ -27,7 +27,9 @@ export const TransactionHistory: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [paymentFilter, setPaymentFilter] = useState<'all' | PaymentMethod>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<'all' | 'this_month' | 'last_30_days'>('all');
+  const [dateRange, setDateRange] = useState<'all' | 'this_month' | 'last_30_days' | 'custom'>('all');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
 
@@ -50,6 +52,10 @@ export const TransactionHistory: React.FC = () => {
       // Date range match
       if (dateRange === 'this_month' && !tx.date.startsWith(currentMonth)) return false;
       if (dateRange === 'last_30_days' && tx.date < thirtyDaysAgo) return false;
+      if (dateRange === 'custom') {
+        if (customStartDate && tx.date < customStartDate) return false;
+        if (customEndDate && tx.date > customEndDate) return false;
+      }
 
       // Search match
       if (searchQuery.trim()) {
@@ -79,7 +85,7 @@ export const TransactionHistory: React.FC = () => {
       if (sortBy === 'amount_asc') return a.amount - b.amount;
       return 0;
     });
-  }, [transactions, searchQuery, typeFilter, paymentFilter, categoryFilter, dateRange, sortBy]);
+  }, [transactions, searchQuery, typeFilter, paymentFilter, categoryFilter, dateRange, customStartDate, customEndDate, sortBy]);
 
   // Export filtered to CSV
   const exportToCSV = () => {
@@ -212,6 +218,7 @@ export const TransactionHistory: React.FC = () => {
               <option value="all">All Time</option>
               <option value="this_month">This Month</option>
               <option value="last_30_days">Last 30 Days</option>
+              <option value="custom">Custom Date Range</option>
             </select>
           </div>
 
@@ -232,6 +239,54 @@ export const TransactionHistory: React.FC = () => {
             </select>
           </div>
         </div>
+
+        {/* Custom Date Range Picker (From / To) */}
+        {dateRange === 'custom' && (
+          <div className="p-3.5 rounded-2xl bg-pink-500/5 dark:bg-slate-800/60 border border-pink-300/30 dark:border-slate-700 space-y-2 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-pink-600 dark:text-pink-300 flex items-center space-x-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Select Custom Date Interval</span>
+              </span>
+              {(customStartDate || customEndDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomStartDate('');
+                    setCustomEndDate('');
+                  }}
+                  className="text-[10px] font-semibold text-slate-400 hover:text-rose-500 transition-colors"
+                >
+                  Clear Custom Filter
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                  From Date (Start)
+                </label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-pink-400"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                  To Date (End)
+                </label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-pink-400"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Transaction List */}

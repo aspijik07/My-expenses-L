@@ -81,7 +81,7 @@ const DEFAULT_AUTH_CREDS = {
 const DEFAULT_SETTINGS: AppSettings = {
   geminiKeys: ['', '', '', ''],
   activeKeyIndex: 0,
-  monthlyBudget: 8500, // 8,500 DH typical Moroccan budget target
+  monthlyBudget: 5000, // 5,000 DH default Moroccan student budget target
   currency: 'DH',
   theme: 'dark',
   themePreset: 'coquette-pink',
@@ -109,7 +109,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.monthlyBudget === 8500) parsed.monthlyBudget = 5000;
+        return { ...DEFAULT_SETTINGS, ...parsed };
+      }
     } catch (e) {
       console.error('Failed to load settings from localStorage', e);
     }

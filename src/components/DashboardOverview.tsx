@@ -79,7 +79,7 @@ export const DashboardOverview: React.FC = () => {
               <span>Moroccan Dirham (DH) • Personal Budget</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Welcome to Your She Budget
+              Welcome to Your Expenses
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-300 max-w-xl">
               Track your daily beauty, student living, and train transit expenses in Rabat. Scan receipts with Gemini 3.6 Flash for instant entry.
@@ -89,10 +89,10 @@ export const DashboardOverview: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => setIsScannerOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-400 hover:opacity-95 shadow-sm transition-all"
+              className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-400 hover:opacity-95 shadow-sm transition-all cursor-pointer"
             >
               <Scan className="w-4 h-4" />
-              <span>Scan Receipt (BIM / Marjane)</span>
+              <span>Scan Receipt</span>
             </button>
             <button
               onClick={() => setIsQuickAddOpen(true)}

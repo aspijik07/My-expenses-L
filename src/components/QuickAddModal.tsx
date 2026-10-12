@@ -73,9 +73,50 @@ export const QuickAddModal: React.FC = () => {
     }
   };
 
+  const [batchCount, setBatchCount] = useState<number>(0);
+  const [justSavedNotice, setJustSavedNotice] = useState<boolean>(false);
+
   const handleClose = () => {
     setIsQuickAddOpen(false);
     setEditingTransaction(null);
+    setBatchCount(0);
+    setJustSavedNotice(false);
+  };
+
+  const handleSaveAndContinue = async () => {
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      alert('Please enter a valid amount in DH');
+      return;
+    }
+
+    await addTransaction({
+      type,
+      amount: numAmount,
+      category: categoryName,
+      subcategory: subcategoryName,
+      paymentMethod,
+      bankName: paymentMethod === 'Card' ? bankName : undefined,
+      merchant: merchant.trim() || undefined,
+      date,
+      notes: notes.trim() || undefined,
+    });
+
+    confetti({
+      particleCount: 25,
+      spread: 50,
+      origin: { y: 0.7 },
+      colors: ['#FF85A1', '#FFC2D1', '#9D84B7', '#06D6A0'],
+    });
+
+    setBatchCount((prev) => prev + 1);
+    setJustSavedNotice(true);
+    setTimeout(() => setJustSavedNotice(false), 2000);
+
+    // Clear transaction-specific fields for immediate next entry
+    setAmount('');
+    setMerchant('');
+    setNotes('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -351,20 +392,39 @@ export const QuickAddModal: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/80">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-400 hover:opacity-95 shadow-sm transition-all"
-            >
-              {editingTransaction ? 'Save Changes' : 'Confirm & Save'}
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/80">
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                {batchCount > 0 ? `Done (${batchCount} saved)` : 'Cancel'}
+              </button>
+              {justSavedNotice && (
+                <span className="text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 animate-fadeIn">
+                  ✓ Saved! Add next below
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2">
+              {!editingTransaction && (
+                <button
+                  type="button"
+                  onClick={handleSaveAndContinue}
+                  className="px-4 py-2.5 rounded-2xl text-xs font-bold text-pink-600 dark:text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-400/30 transition-all cursor-pointer"
+                >
+                  Save & Add Next (+)
+                </button>
+              )}
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-400 hover:opacity-95 shadow-sm transition-all cursor-pointer"
+              >
+                {editingTransaction ? 'Save Changes' : 'Confirm & Save'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
