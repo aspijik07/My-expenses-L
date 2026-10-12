@@ -26,6 +26,15 @@ import {
 } from 'firebase/firestore';
 import { Transaction, ActivityLog, AppSettings } from '../types';
 
+export const DEFAULT_FIREBASE_CONFIG: NonNullable<AppSettings['firebaseConfig']> = {
+  apiKey: 'AIzaSyCbD0qRAUCDbaNR8JTK069g6FiT-7vrBzU',
+  authDomain: 'she-budget.firebaseapp.com',
+  projectId: 'she-budget',
+  storageBucket: 'she-budget.firebasestorage.app',
+  messagingSenderId: '',
+  appId: '',
+};
+
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
@@ -40,14 +49,14 @@ export function isFirebaseConfigured(): boolean {
 
 export function initFirebase(config?: AppSettings['firebaseConfig']): boolean {
   try {
-    // Check if configuration exists either via parameter or environment variables
-    const finalConfig = config || {
-      apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-      appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+    // Check if configuration exists via parameter, env, or default shared config
+    const finalConfig = (config && config.apiKey && config.projectId) ? config : {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY || DEFAULT_FIREBASE_CONFIG.apiKey,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || DEFAULT_FIREBASE_CONFIG.authDomain,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || DEFAULT_FIREBASE_CONFIG.projectId,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || DEFAULT_FIREBASE_CONFIG.storageBucket,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID || DEFAULT_FIREBASE_CONFIG.appId,
     };
 
     if (!finalConfig.apiKey || !finalConfig.projectId) {
@@ -120,7 +129,8 @@ export async function syncLogToFirestore(
 
 export function subscribeToTransactions(
   userId: string,
-  onUpdate: (transactions: Transaction[]) => void
+  onUpdate: (transactions: Transaction[]) => void,
+  onError?: (err: Error) => void
 ): () => void {
   if (!db) return () => {};
   const q = query(
@@ -139,13 +149,15 @@ export function subscribeToTransactions(
     },
     (err) => {
       console.error('Firestore transactions subscription error:', err);
+      if (onError) onError(err);
     }
   );
 }
 
 export function subscribeToActivityLogs(
   userId: string,
-  onUpdate: (logs: ActivityLog[]) => void
+  onUpdate: (logs: ActivityLog[]) => void,
+  onError?: (err: Error) => void
 ): () => void {
   if (!db) return () => {};
   const q = query(
@@ -164,6 +176,7 @@ export function subscribeToActivityLogs(
     },
     (err) => {
       console.error('Firestore activity logs subscription error:', err);
+      if (onError) onError(err);
     }
   );
 }

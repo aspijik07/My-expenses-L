@@ -22,6 +22,7 @@ import {
   subscribeToActivityLogs,
   SHARED_USER_ID,
   isFirebaseConfigured,
+  DEFAULT_FIREBASE_CONFIG,
 } from '../services/firebase';
 import { getClientDeviceInfo, fetchClientIp } from '../utils/deviceInfo';
 
@@ -109,21 +110,50 @@ const DEFAULT_SETTINGS: AppSettings = {
     accent: '#E05780',        // Vibrant Berry Pink
     backgroundTint: '#FFF0F5',// Soft Coquette White Pink
   },
+  firebaseConfig: DEFAULT_FIREBASE_CONFIG,
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 1. Transactions State - 100% EMPTY BY DEFAULT per user instruction!
+  // 1. Transactions State - Check v2 and legacy keys, merge and deduplicate
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-      if (saved) return JSON.parse(saved);
+      const v2 = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+      const v1 = localStorage.getItem('my_expenses_l_transactions');
+      const list: Transaction[] = [];
+      const seenIds = new Set<string>();
+
+      if (v2) {
+        const parsedV2 = JSON.parse(v2);
+        if (Array.isArray(parsedV2)) {
+          parsedV2.forEach((tx: Transaction) => {
+            if (tx && tx.id && !seenIds.has(tx.id)) {
+              seenIds.add(tx.id);
+              list.push(tx);
+            }
+          });
+        }
+      }
+
+      if (v1) {
+        const parsedV1 = JSON.parse(v1);
+        if (Array.isArray(parsedV1)) {
+          parsedV1.forEach((tx: Transaction) => {
+            if (tx && tx.id && !seenIds.has(tx.id)) {
+              seenIds.add(tx.id);
+              list.push(tx);
+            }
+          });
+        }
+      }
+
+      if (list.length > 0) return list;
     } catch (e) {
       console.error('Failed to load transactions from localStorage', e);
     }
     return []; // Clean slate, empty data!
   });
 
-  // 2. Settings State (with automatic migration of master Gemini keys to all devices)
+  // 2. Settings State (with automatic migration of master Gemini keys and Cloud config to all devices)
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -133,6 +163,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // If keys in device localStorage are empty, auto-populate with the master default keys!
         if (!parsed.geminiKeys || !parsed.geminiKeys[0] || parsed.geminiKeys[0].trim().length < 5) {
           parsed.geminiKeys = DEFAULT_SETTINGS.geminiKeys;
+        }
+        // Auto-configure master shared Firebase config if missing
+        if (!parsed.firebaseConfig || !parsed.firebaseConfig.apiKey) {
+          parsed.firebaseConfig = DEFAULT_FIREBASE_CONFIG;
         }
         return { ...DEFAULT_SETTINGS, ...parsed };
       }
@@ -313,18 +347,72 @@ const MASTER_OWNER = {
     const isReady = initFirebase(settings.firebaseConfig);
     setIsCloudConnected(isReady);
     if (isReady) {
-      // Real-time live listener for all transactions across all devices!
-      const unsubTx = subscribeToTransactions(SHARED_USER_ID, (cloudTx) => {
-        if (cloudTx && cloudTx.length > 0) {
-          setTransactions(cloudTx);
-        }
-      });
+      let isInitialTxLoad = true;
 
-      const unsubLogs = subscribeToActivityLogs(SHARED_USER_ID, (cloudLogs) => {
-        if (cloudLogs && cloudLogs.length > 0) {
-          setLogs(cloudLogs);
+      // Real-time live listener for all transactions across all devices!
+      const unsubTx = subscribeToTransactions(
+        SHARED_USER_ID,
+        (cloudTx) => {
+          if (isInitialTxLoad) {
+            isInitialTxLoad = false;
+            // First load: merge local items with cloud items so NOTHING is lost
+            setTransactions((prevLocal) => {
+              const cloudMap = new Map<string, Transaction>();
+              (cloudTx || []).forEach((tx) => {
+                if (tx && tx.id) cloudMap.set(tx.id, tx);
+              });
+
+              // Any local items not yet in Cloud get pushed immediately
+              const unsyncedLocals = prevLocal.filter((localTx) => !cloudMap.has(localTx.id));
+              if (unsyncedLocals.length > 0) {
+                unsyncedLocals.forEach((tx) => {
+                  syncTransactionToFirestore(SHARED_USER_ID, tx).catch(console.error);
+                  cloudMap.set(tx.id, tx);
+                });
+              }
+
+              return Array.from(cloudMap.values()).sort(
+                (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+              );
+            });
+          } else {
+            // Live real-time updates from other devices
+            setTransactions(cloudTx || []);
+          }
+        },
+        (err) => {
+          console.warn('Live Cloud Sync Notice:', err.message);
         }
-      });
+      );
+
+      let isInitialLogsLoad = true;
+      const unsubLogs = subscribeToActivityLogs(
+        SHARED_USER_ID,
+        (cloudLogs) => {
+          if (isInitialLogsLoad) {
+            isInitialLogsLoad = false;
+            setLogs((prevLocal) => {
+              const cloudMap = new Map<string, ActivityLog>();
+              (cloudLogs || []).forEach((l) => {
+                if (l && l.id) cloudMap.set(l.id, l);
+              });
+              const unsynced = prevLocal.filter((l) => !cloudMap.has(l.id));
+              if (unsynced.length > 0) {
+                unsynced.forEach((l) => {
+                  syncLogToFirestore(SHARED_USER_ID, l).catch(console.error);
+                  cloudMap.set(l.id, l);
+                });
+              }
+              return Array.from(cloudMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+            });
+          } else {
+            setLogs(cloudLogs || []);
+          }
+        },
+        (err) => {
+          console.warn('Live Cloud Logs Notice:', err.message);
+        }
+      );
 
       return () => {
         unsubTx();
@@ -554,6 +642,13 @@ const MASTER_OWNER = {
           setSettings((prev) => ({ ...prev, monthlyBudget: data.settings.monthlyBudget }));
         }
         addLog('IMPORT', 'Data Imported Successfully', `Restored ${data.transactions.length} transactions`);
+
+        // Automatically push imported items to shared cloud
+        if (isFirebaseConfigured()) {
+          for (const tx of data.transactions) {
+            syncTransactionToFirestore(SHARED_USER_ID, tx).catch(console.error);
+          }
+        }
         return true;
       }
       return false;
@@ -563,9 +658,15 @@ const MASTER_OWNER = {
     }
   };
 
-  const clearAllData = () => {
+  const clearAllData = async () => {
+    const toDelete = [...transactions];
     setTransactions([]);
     addLog('DELETE', 'All Transactions Cleared', 'Reset to empty clean slate');
+    if (isFirebaseConfigured()) {
+      for (const t of toDelete) {
+        await deleteTransactionFromFirestore(SHARED_USER_ID, t.id).catch(console.error);
+      }
+    }
   };
 
   const loadDemoData = () => {

@@ -839,6 +839,15 @@ export const SettingsModal: React.FC = () => {
                 className="w-full px-3 py-2 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-purple-500 text-slate-900 dark:text-white resize-none"
               />
 
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 space-y-1">
+                <p className="font-bold flex items-center space-x-1">
+                  <span>💡 Firebase Cloud Setup:</span>
+                </p>
+                <p className="text-[10px] leading-relaxed">
+                  In Firebase Console, go to <strong>Build → Firestore Database → Create database</strong> and choose <strong>"Start in test mode"</strong> so all your devices can read and write live data.
+                </p>
+              </div>
+
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                 <div className="flex items-center space-x-2">
                   <button
