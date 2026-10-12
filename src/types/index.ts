@@ -79,7 +79,7 @@ export interface AppSettings {
 
 export interface ActivityLog {
   id: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'SCAN_RECEIPT' | 'IMPORT' | 'EXPORT' | 'SETTINGS_UPDATE';
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'SCAN_RECEIPT' | 'IMPORT' | 'EXPORT' | 'SETTINGS_UPDATE' | 'LOGIN';
   title: string;
   details?: string;
   timestamp: number;

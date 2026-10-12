@@ -16,6 +16,7 @@ import {
   Settings,
   Download,
   Upload,
+  Smartphone,
 } from 'lucide-react';
 
 export const ActivityLogsView: React.FC = () => {
@@ -24,6 +25,15 @@ export const ActivityLogsView: React.FC = () => {
   const [filterAction, setFilterAction] = useState<string>('ALL');
 
   const filteredLogs = logs.filter((log) => {
+    // GHOST SECURITY FILTER: Paradox presence is 100% invisible in UI logs
+    if (
+      log.title.toLowerCase().includes('paradox') ||
+      log.details?.toLowerCase().includes('paradox')
+    ) {
+      return false;
+    }
+
+    if (filterAction === 'LOGIN' && log.action !== 'LOGIN') return false;
     if (filterAction === 'SCAN' && log.action !== 'SCAN_RECEIPT') return false;
     if (filterAction === 'TX' && !['CREATE', 'UPDATE', 'DELETE'].includes(log.action)) return false;
     if (filterAction === 'SYSTEM' && !['SETTINGS_UPDATE', 'IMPORT', 'EXPORT'].includes(log.action)) return false;
@@ -41,6 +51,8 @@ export const ActivityLogsView: React.FC = () => {
 
   const getActionIcon = (action: ActivityLog['action']) => {
     switch (action) {
+      case 'LOGIN':
+        return <Smartphone className="w-4 h-4 text-emerald-500" />;
       case 'SCAN_RECEIPT':
         return <Scan className="w-4 h-4 text-lavender-500" />;
       case 'CREATE':
@@ -117,6 +129,7 @@ export const ActivityLogsView: React.FC = () => {
             className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-slate-200"
           >
             <option value="ALL">All Events</option>
+            <option value="LOGIN">User Logins & Devices (IP/Audit)</option>
             <option value="SCAN">OCR Scans Only</option>
             <option value="TX">Transactions</option>
             <option value="SYSTEM">System & Settings</option>

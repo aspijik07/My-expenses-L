@@ -27,7 +27,7 @@ const MainAppContent: React.FC = () => {
       <Navbar />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 xl:pb-8">
         {activeTab === 'dashboard' && <DashboardOverview />}
         {activeTab === 'transactions' && <TransactionHistory />}
         {activeTab === 'analytics' && <AnalyticsView />}
@@ -42,7 +42,7 @@ const MainAppContent: React.FC = () => {
       <CategoryManagerModal />
 
       {/* Modern Pinterest Feminine Footer */}
-      <footer className="mt-16 border-t border-pink-200/50 dark:border-slate-800/80 py-8 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md">
+      <footer className="mt-16 border-t border-pink-200/50 dark:border-slate-800/80 py-8 pb-28 xl:pb-8 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
           <div className="flex items-center space-x-2">
             <span className="font-extrabold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">

