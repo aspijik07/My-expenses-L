@@ -9,6 +9,11 @@ import {
   Tag,
   Sparkles,
   Check,
+  ChevronUp,
+  ChevronDown,
+  ArrowLeft,
+  ArrowRight,
+  GripVertical,
 } from 'lucide-react';
 
 const PASTEL_COLOR_CHOICES = [
@@ -33,7 +38,12 @@ export const CategoryManagerModal: React.FC = () => {
     categories,
     addCategory,
     addSubcategory,
+    deleteSubcategory,
     deleteCategory,
+    moveCategory,
+    reorderCategories,
+    moveSubcategory,
+    reorderSubcategories,
   } = useApp();
 
   const [activeTypeTab, setActiveTypeTab] = useState<TransactionType>('expense');
@@ -42,6 +52,8 @@ export const CategoryManagerModal: React.FC = () => {
   const [newCatSubcategories, setNewCatSubcategories] = useState('');
   const [activeCategoryForSub, setActiveCategoryForSub] = useState<string | null>(null);
   const [newSubName, setNewSubName] = useState('');
+  const [draggedCatId, setDraggedCatId] = useState<string | null>(null);
+  const [draggedSub, setDraggedSub] = useState<{ catName: string; index: number } | null>(null);
 
   if (!isCategoryManagerOpen) return null;
 
@@ -200,20 +212,56 @@ export const CategoryManagerModal: React.FC = () => {
 
           {/* List of Existing Categories */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-              Current {activeTypeTab === 'expense' ? 'Expense' : 'Income'} Categories ({filteredCategories.length})
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                Current {activeTypeTab === 'expense' ? 'Expense' : 'Income'} Categories ({filteredCategories.length})
+              </h3>
+              <span className="text-[10px] text-slate-400 font-medium">
+                Tip: Drag cards/tags or use arrows to change order
+              </span>
+            </div>
 
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {filteredCategories.map((cat) => (
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+              {filteredCategories.map((cat, catIdx) => (
                 <div
                   key={cat.id}
-                  className="p-3.5 rounded-2xl bg-white/40 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 space-y-2.5"
+                  draggable
+                  onDragStart={() => setDraggedCatId(cat.id)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (!draggedCatId || draggedCatId === cat.id) return;
+                    const currentList = [...filteredCategories];
+                    const fromIdx = currentList.findIndex((c) => c.id === draggedCatId);
+                    const toIdx = catIdx;
+                    if (fromIdx !== -1 && toIdx !== -1) {
+                      const [moved] = currentList.splice(fromIdx, 1);
+                      currentList.splice(toIdx, 0, moved);
+                      const otherTypes = categories.filter((c) => c.type !== activeTypeTab);
+                      const fullList =
+                        activeTypeTab === 'expense'
+                          ? [...currentList, ...otherTypes]
+                          : [...otherTypes, ...currentList];
+                      reorderCategories(fullList);
+                    }
+                    setDraggedCatId(null);
+                  }}
+                  className={`p-3.5 sm:p-4 rounded-2xl bg-white/70 dark:bg-slate-800/70 border transition-all space-y-3 ${
+                    draggedCatId === cat.id
+                      ? 'opacity-40 border-pink-400 border-dashed scale-95'
+                      : 'border-slate-200/70 dark:border-slate-700/70 shadow-xs hover:border-pink-300/60'
+                  }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center space-x-2.5">
+                      <div
+                        className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-slate-400 hover:text-pink-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
+                        title="Drag card to reorder category"
+                      >
+                        <GripVertical className="w-4 h-4" />
+                      </div>
                       <span
-                        className="w-3.5 h-3.5 rounded-full flex-shrink-0"
+                        className="w-4 h-4 rounded-full flex-shrink-0 shadow-xs"
                         style={{ backgroundColor: cat.color }}
                       />
                       <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
@@ -226,7 +274,29 @@ export const CategoryManagerModal: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1.5">
+                      {/* Move Category Up / Down buttons */}
+                      <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-xl p-0.5 border border-slate-200/60 dark:border-slate-700/60">
+                        <button
+                          type="button"
+                          onClick={() => moveCategory(cat.id, 'up')}
+                          disabled={catIdx === 0}
+                          title="Move category up"
+                          className="p-1 text-slate-500 hover:text-pink-500 disabled:opacity-20 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveCategory(cat.id, 'down')}
+                          disabled={catIdx === filteredCategories.length - 1}
+                          title="Move category down"
+                          className="p-1 text-slate-500 hover:text-pink-500 disabled:opacity-20 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() =>
@@ -234,17 +304,17 @@ export const CategoryManagerModal: React.FC = () => {
                             activeCategoryForSub === cat.name ? null : cat.name
                           )
                         }
-                        className="text-[11px] font-bold text-pink-500 hover:underline flex items-center space-x-1"
+                        className="px-2.5 py-1 rounded-xl text-[11px] font-bold text-pink-600 dark:text-pink-400 bg-pink-500/10 hover:bg-pink-500/20 transition-all flex items-center space-x-1 cursor-pointer"
                       >
                         <Plus className="w-3 h-3" />
-                        <span>Add Subcategory</span>
+                        <span className="hidden sm:inline">Add Sub</span>
                       </button>
 
                       {cat.isCustom && (
                         <button
                           type="button"
                           onClick={() => deleteCategory(cat.id)}
-                          className="p-1 text-slate-400 hover:text-rose-500"
+                          className="p-1.5 text-slate-400 hover:text-rose-500 rounded-xl hover:bg-rose-500/10 transition-colors cursor-pointer"
                           title="Delete category"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -254,15 +324,91 @@ export const CategoryManagerModal: React.FC = () => {
                   </div>
 
                   {/* Subcategories tags */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {cat.subcategories.map((sub, sIdx) => (
-                      <span
-                        key={sIdx}
-                        className="text-[11px] font-medium px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50"
-                      >
-                        {sub}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400 font-semibold">
+                        Subcategories ({cat.subcategories.length}) • Drag tag or use arrows to change first choice:
                       </span>
-                    ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      {cat.subcategories.map((sub, sIdx) => (
+                        <div
+                          key={sub}
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            setDraggedSub({ catName: cat.name, index: sIdx });
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!draggedSub || draggedSub.catName !== cat.name) return;
+                            if (draggedSub.index === sIdx) return;
+                            const newSubs = [...cat.subcategories];
+                            const [moved] = newSubs.splice(draggedSub.index, 1);
+                            newSubs.splice(sIdx, 0, moved);
+                            reorderSubcategories(cat.name, newSubs);
+                            setDraggedSub(null);
+                          }}
+                          className={`group flex items-center space-x-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all cursor-grab active:cursor-grabbing select-none shadow-xs ${
+                            sIdx === 0
+                              ? 'bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-300 border-pink-400/50'
+                              : 'bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80 hover:border-pink-400/60'
+                          }`}
+                        >
+                          <GripVertical className="w-3 h-3 text-slate-400 group-hover:text-pink-500 cursor-grab" />
+                          <span>{sIdx === 0 ? `★ ${sub}` : sub}</span>
+
+                          {/* Quick Arrow controls */}
+                          <div className="flex items-center space-x-0.5 ml-1 opacity-70 group-hover:opacity-100">
+                            {sIdx > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  moveSubcategory(cat.name, sIdx, 'up');
+                                }}
+                                title="Move left (make primary)"
+                                className="p-0.5 hover:text-pink-500 rounded cursor-pointer"
+                              >
+                                <ArrowLeft className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+                            {sIdx < cat.subcategories.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  moveSubcategory(cat.name, sIdx, 'down');
+                                }}
+                                title="Move right"
+                                className="p-0.5 hover:text-pink-500 rounded cursor-pointer"
+                              >
+                                <ArrowRight className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+                            {cat.subcategories.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteSubcategory(cat.name, sub);
+                                }}
+                                title="Remove subcategory"
+                                className="p-0.5 text-slate-400 hover:text-rose-500 rounded cursor-pointer ml-0.5"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Inline Subcategory adder if toggled */}
@@ -285,14 +431,14 @@ export const CategoryManagerModal: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleAddSubcategorySubmit(cat.name)}
-                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-pink-500"
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-pink-500 hover:bg-pink-600 transition-all cursor-pointer"
                       >
                         Add
                       </button>
                       <button
                         type="button"
                         onClick={() => setActiveCategoryForSub(null)}
-                        className="px-2 py-1.5 text-xs text-slate-400"
+                        className="px-2 py-1.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                       >
                         Cancel
                       </button>

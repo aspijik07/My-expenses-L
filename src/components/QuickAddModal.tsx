@@ -78,75 +78,26 @@ export const QuickAddModal: React.FC = () => {
 
   const [batchCount, setBatchCount] = useState<number>(0);
   const [justSavedNotice, setJustSavedNotice] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const handleClose = () => {
     setIsQuickAddOpen(false);
     setEditingTransaction(null);
     setBatchCount(0);
     setJustSavedNotice(false);
+    setIsSubmitting(false);
   };
 
   const handleSaveAndContinue = async () => {
+    if (isSubmitting) return;
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
       alert('Please enter a valid amount in DH');
       return;
     }
 
-    await addTransaction({
-      type,
-      amount: numAmount,
-      itemName: itemName.trim() || undefined,
-      category: categoryName,
-      subcategory: subcategoryName,
-      paymentMethod,
-      bankName: paymentMethod === 'Card' ? bankName : undefined,
-      merchant: merchant.trim() || undefined,
-      date,
-      notes: notes.trim() || undefined,
-    });
-
-    confetti({
-      particleCount: 25,
-      spread: 50,
-      origin: { y: 0.7 },
-      colors: ['#FF85A1', '#FFC2D1', '#9D84B7', '#06D6A0'],
-    });
-
-    setBatchCount((prev) => prev + 1);
-    setJustSavedNotice(true);
-    setTimeout(() => setJustSavedNotice(false), 2000);
-
-    // Clear transaction-specific fields for immediate next entry
-    setAmount('');
-    setItemName('');
-    setMerchant('');
-    setNotes('');
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      alert('Please enter a valid amount in DH');
-      return;
-    }
-
-    if (editingTransaction) {
-      await updateTransaction({
-        ...editingTransaction,
-        type,
-        amount: numAmount,
-        itemName: itemName.trim() || undefined,
-        category: categoryName,
-        subcategory: subcategoryName,
-        paymentMethod,
-        bankName: paymentMethod === 'Card' ? bankName : undefined,
-        merchant: merchant.trim() || undefined,
-        date,
-        notes: notes.trim() || undefined,
-      });
-    } else {
+    setIsSubmitting(true);
+    try {
       await addTransaction({
         type,
         amount: numAmount,
@@ -161,14 +112,81 @@ export const QuickAddModal: React.FC = () => {
       });
 
       confetti({
-        particleCount: 40,
-        spread: 60,
+        particleCount: 25,
+        spread: 50,
         origin: { y: 0.7 },
         colors: ['#FF85A1', '#FFC2D1', '#9D84B7', '#06D6A0'],
       });
+
+      setBatchCount((prev) => prev + 1);
+      setJustSavedNotice(true);
+      setTimeout(() => setJustSavedNotice(false), 2000);
+
+      // Clear transaction-specific fields for immediate next entry
+      setAmount('');
+      setItemName('');
+      setMerchant('');
+      setNotes('');
+    } catch (err) {
+      console.warn('Batch add notice:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      alert('Please enter a valid amount in DH');
+      return;
     }
 
-    handleClose();
+    setIsSubmitting(true);
+    try {
+      if (editingTransaction) {
+        await updateTransaction({
+          ...editingTransaction,
+          type,
+          amount: numAmount,
+          itemName: itemName.trim() || undefined,
+          category: categoryName,
+          subcategory: subcategoryName,
+          paymentMethod,
+          bankName: paymentMethod === 'Card' ? bankName : undefined,
+          merchant: merchant.trim() || undefined,
+          date,
+          notes: notes.trim() || undefined,
+        });
+      } else {
+        await addTransaction({
+          type,
+          amount: numAmount,
+          itemName: itemName.trim() || undefined,
+          category: categoryName,
+          subcategory: subcategoryName,
+          paymentMethod,
+          bankName: paymentMethod === 'Card' ? bankName : undefined,
+          merchant: merchant.trim() || undefined,
+          date,
+          notes: notes.trim() || undefined,
+        });
+
+        confetti({
+          particleCount: 40,
+          spread: 60,
+          origin: { y: 0.7 },
+          colors: ['#FF85A1', '#FFC2D1', '#9D84B7', '#06D6A0'],
+        });
+      }
+    } catch (err) {
+      console.warn('Submit transaction notice:', err);
+    } finally {
+      setIsSubmitting(false);
+      handleClose();
+    }
   };
 
   if (!isQuickAddOpen && !editingTransaction) return null;
@@ -433,17 +451,19 @@ export const QuickAddModal: React.FC = () => {
               {!editingTransaction && (
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={handleSaveAndContinue}
-                  className="px-4 py-2.5 rounded-2xl text-xs font-bold text-pink-600 dark:text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-400/30 transition-all cursor-pointer"
+                  className="px-4 py-2.5 rounded-2xl text-xs font-bold text-pink-600 dark:text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-400/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Save & Add Next (+)
                 </button>
               )}
               <button
                 type="submit"
-                className="px-5 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-400 hover:opacity-95 shadow-sm transition-all cursor-pointer"
+                disabled={isSubmitting}
+                className="px-5 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-400 hover:opacity-95 shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
               >
-                {editingTransaction ? 'Save Changes' : 'Confirm & Save'}
+                <span>{isSubmitting ? 'Saving...' : editingTransaction ? 'Save Changes' : 'Confirm & Save'}</span>
               </button>
             </div>
           </div>

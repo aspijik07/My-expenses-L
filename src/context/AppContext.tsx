@@ -41,7 +41,12 @@ interface AppContextType {
   categories: CategoryDefinition[];
   addCategory: (newCat: Omit<CategoryDefinition, 'id'>) => void;
   addSubcategory: (categoryName: string, subName: string) => void;
+  deleteSubcategory: (categoryName: string, subName: string) => void;
   deleteCategory: (categoryId: string) => void;
+  moveCategory: (categoryId: string, direction: 'up' | 'down') => void;
+  reorderCategories: (newOrderedCategories: CategoryDefinition[]) => void;
+  moveSubcategory: (categoryName: string, subIndex: number, direction: 'up' | 'down') => void;
+  reorderSubcategories: (categoryName: string, newSubcategories: string[]) => void;
   logs: ActivityLog[];
   addLog: (action: ActivityLog['action'], title: string, details?: string, status?: ActivityLog['status']) => void;
   user: User | null;
@@ -476,7 +481,11 @@ const MASTER_OWNER = {
     );
 
     if (isFirebaseConfigured()) {
-      await syncTransactionToFirestore(SHARED_USER_ID, newTx);
+      try {
+        await syncTransactionToFirestore(SHARED_USER_ID, newTx);
+      } catch (err) {
+        console.warn('Firestore sync notice:', err);
+      }
     }
 
     return newTx;
@@ -504,7 +513,11 @@ const MASTER_OWNER = {
 
     if (isFirebaseConfigured()) {
       for (const t of newTxs) {
-        await syncTransactionToFirestore(SHARED_USER_ID, t);
+        try {
+          await syncTransactionToFirestore(SHARED_USER_ID, t);
+        } catch (err) {
+          console.warn('Firestore batch sync notice:', err);
+        }
       }
     }
 
@@ -523,7 +536,11 @@ const MASTER_OWNER = {
     );
 
     if (isFirebaseConfigured()) {
-      await syncTransactionToFirestore(SHARED_USER_ID, finalTx);
+      try {
+        await syncTransactionToFirestore(SHARED_USER_ID, finalTx);
+      } catch (err) {
+        console.warn('Firestore update sync notice:', err);
+      }
     }
   };
 
@@ -538,7 +555,11 @@ const MASTER_OWNER = {
     );
 
     if (isFirebaseConfigured()) {
-      await deleteTransactionFromFirestore(SHARED_USER_ID, id);
+      try {
+        await deleteTransactionFromFirestore(SHARED_USER_ID, id);
+      } catch (err) {
+        console.warn('Firestore delete sync notice:', err);
+      }
     }
   };
 
@@ -606,6 +627,82 @@ const MASTER_OWNER = {
   const deleteCategory = (categoryId: string) => {
     setCategories((prev) => prev.filter((c) => c.id !== categoryId));
     addLog('SETTINGS_UPDATE', 'Category Removed', `Deleted category #${categoryId}`);
+  };
+
+  const deleteSubcategory = (categoryName: string, subName: string) => {
+    setCategories((prev) =>
+      prev.map((cat) => {
+        if (cat.name !== categoryName) return cat;
+        return {
+          ...cat,
+          subcategories: cat.subcategories.filter((s) => s !== subName),
+        };
+      })
+    );
+    addLog('SETTINGS_UPDATE', 'Subcategory Removed', `Removed "${subName}" from ${categoryName}`);
+  };
+
+  const moveCategory = (categoryId: string, direction: 'up' | 'down') => {
+    setCategories((prev) => {
+      const index = prev.findIndex((c) => c.id === categoryId);
+      if (index === -1) return prev;
+      const targetType = prev[index].type;
+      const sameTypeIndices = prev
+        .map((c, i) => (c.type === targetType ? i : -1))
+        .filter((i) => i !== -1);
+      const pos = sameTypeIndices.indexOf(index);
+      if (direction === 'up' && pos > 0) {
+        const swapIdx = sameTypeIndices[pos - 1];
+        const next = [...prev];
+        const temp = next[index];
+        next[index] = next[swapIdx];
+        next[swapIdx] = temp;
+        return next;
+      }
+      if (direction === 'down' && pos < sameTypeIndices.length - 1) {
+        const swapIdx = sameTypeIndices[pos + 1];
+        const next = [...prev];
+        const temp = next[index];
+        next[index] = next[swapIdx];
+        next[swapIdx] = temp;
+        return next;
+      }
+      return prev;
+    });
+  };
+
+  const reorderCategories = (newOrderedCategories: CategoryDefinition[]) => {
+    setCategories(newOrderedCategories);
+  };
+
+  const moveSubcategory = (categoryName: string, subIndex: number, direction: 'up' | 'down') => {
+    setCategories((prev) =>
+      prev.map((cat) => {
+        if (cat.name !== categoryName) return cat;
+        const subs = [...cat.subcategories];
+        if (direction === 'up' && subIndex > 0) {
+          const temp = subs[subIndex];
+          subs[subIndex] = subs[subIndex - 1];
+          subs[subIndex - 1] = temp;
+        } else if (direction === 'down' && subIndex < subs.length - 1) {
+          const temp = subs[subIndex];
+          subs[subIndex] = subs[subIndex + 1];
+          subs[subIndex + 1] = temp;
+        }
+        return { ...cat, subcategories: subs };
+      })
+    );
+  };
+
+  const reorderSubcategories = (categoryName: string, newSubcategories: string[]) => {
+    setCategories((prev) =>
+      prev.map((cat) => {
+        if (cat.name === categoryName) {
+          return { ...cat, subcategories: newSubcategories };
+        }
+        return cat;
+      })
+    );
   };
 
   const exportDataToJson = () => {
@@ -692,7 +789,12 @@ const MASTER_OWNER = {
         categories,
         addCategory,
         addSubcategory,
+        deleteSubcategory,
         deleteCategory,
+        moveCategory,
+        reorderCategories,
+        moveSubcategory,
+        reorderSubcategories,
         logs,
         addLog,
         user,
