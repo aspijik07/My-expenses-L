@@ -66,8 +66,8 @@ export const Navbar: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
-                  <span className="hidden sm:inline">Rabat Student Edition • Moroccan Dirham (DH)</span>
-                  <span className="sm:hidden">Rabat Student • DH</span>
+                  <span className="hidden sm:inline">Personal Budget Edition • Moroccan Dirham (DH)</span>
+                  <span className="sm:hidden">She Budget • DH</span>
                 </p>
               </div>
             </div>

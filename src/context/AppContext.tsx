@@ -185,7 +185,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [categories, setCategories] = useState<CategoryDefinition[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: CategoryDefinition[] = JSON.parse(saved);
+        // Check if saved categories have legacy city tags like 'Rabat' or 'Agdal'
+        const hasLegacyCity = parsed.some((c) =>
+          c.subcategories.some((s) => s.includes('Rabat') || s.includes('Agdal') || s.includes('Redal'))
+        );
+        if (!hasLegacyCity && parsed.length >= 8) {
+          return parsed;
+        }
+      }
     } catch (e) {
       console.error('Failed to load categories', e);
     }

@@ -10,7 +10,16 @@ import {
   Banknote,
   ArrowRightLeft,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
+
+interface SessionAddedItem {
+  id: string;
+  name: string;
+  category: string;
+  subcategory: string;
+  amount: number;
+}
 
 export const QuickAddModal: React.FC = () => {
   const {
@@ -20,16 +29,16 @@ export const QuickAddModal: React.FC = () => {
     setEditingTransaction,
     addTransaction,
     updateTransaction,
+    deleteTransaction,
     categories,
   } = useApp();
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState<string>('');
   const [itemName, setItemName] = useState<string>('');
-  const [categoryName, setCategoryName] = useState<string>('Beauty & Personal Care');
-  const [subcategoryName, setSubcategoryName] = useState<string>('Skincare');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Card');
-  // Fixed exclusively to Banque Populaire (Chaabi Bank)
+  const [categoryName, setCategoryName] = useState<string>('Beauty & Self-Care');
+  const [subcategoryName, setSubcategoryName] = useState<string>('Skincare & Sunscreen');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash');
   const bankName: MoroccanBank = 'Banque Populaire (Chaabi Bank)';
   const [merchant, setMerchant] = useState<string>('');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -38,6 +47,11 @@ export const QuickAddModal: React.FC = () => {
   const currentCategories = categories.filter((c) => c.type === type);
   const currentCategoryDef =
     currentCategories.find((c) => c.name === categoryName) || currentCategories[0];
+
+  const [batchCount, setBatchCount] = useState<number>(0);
+  const [justSavedNotice, setJustSavedNotice] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [sessionItems, setSessionItems] = useState<SessionAddedItem[]>([]);
 
   useEffect(() => {
     if (editingTransaction) {
@@ -59,7 +73,7 @@ export const QuickAddModal: React.FC = () => {
         setCategoryName(firstExp.name);
         setSubcategoryName(firstExp.subcategories[0] || 'General');
       }
-      setPaymentMethod('Card');
+      setPaymentMethod('Cash'); // Always default to Cash per user instruction!
       setMerchant('');
       setDate(new Date().toISOString().split('T')[0]);
       setNotes('');
@@ -76,16 +90,13 @@ export const QuickAddModal: React.FC = () => {
     }
   };
 
-  const [batchCount, setBatchCount] = useState<number>(0);
-  const [justSavedNotice, setJustSavedNotice] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
   const handleClose = () => {
     setIsQuickAddOpen(false);
     setEditingTransaction(null);
     setBatchCount(0);
     setJustSavedNotice(false);
     setIsSubmitting(false);
+    setSessionItems([]);
   };
 
   const handleSaveAndContinue = async () => {
@@ -98,7 +109,7 @@ export const QuickAddModal: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await addTransaction({
+      const createdTx = await addTransaction({
         type,
         amount: numAmount,
         itemName: itemName.trim() || undefined,
@@ -117,6 +128,17 @@ export const QuickAddModal: React.FC = () => {
         origin: { y: 0.7 },
         colors: ['#FF85A1', '#FFC2D1', '#9D84B7', '#06D6A0'],
       });
+
+      setSessionItems((prev) => [
+        ...prev,
+        {
+          id: createdTx.id,
+          name: itemName.trim() || subcategoryName,
+          category: categoryName,
+          subcategory: subcategoryName,
+          amount: numAmount,
+        },
+      ]);
 
       setBatchCount((prev) => prev + 1);
       setJustSavedNotice(true);
@@ -319,7 +341,7 @@ export const QuickAddModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Payment Method Picker (Chaabi Bank exclusive for Card) */}
+          {/* Payment Method Picker (Cash, Card, Transfer) */}
           <div className="space-y-2">
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
               Payment Method
@@ -328,10 +350,10 @@ export const QuickAddModal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setPaymentMethod('Cash')}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border text-xs font-semibold transition-all ${
+                className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border text-xs font-semibold transition-all cursor-pointer ${
                   paymentMethod === 'Cash'
-                    ? 'border-pink-400 bg-pink-500/10 text-pink-600'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                    ? 'border-pink-400 bg-pink-500/10 text-pink-600 dark:text-pink-300 font-bold shadow-xs'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-pink-300/40'
                 }`}
               >
                 <Banknote className="w-4 h-4 mb-1" />
@@ -341,37 +363,29 @@ export const QuickAddModal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setPaymentMethod('Card')}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border text-xs font-semibold transition-all ${
+                className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border text-xs font-semibold transition-all cursor-pointer ${
                   paymentMethod === 'Card'
-                    ? 'border-amber-500 bg-amber-500/10 text-amber-600'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                    ? 'border-pink-400 bg-pink-500/10 text-pink-600 dark:text-pink-300 font-bold shadow-xs'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-pink-300/40'
                 }`}
               >
-                <CreditCard className="w-4 h-4 mb-1 text-amber-500" />
-                <span>Chaabi Card</span>
+                <CreditCard className="w-4 h-4 mb-1" />
+                <span>Card</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setPaymentMethod('Bank Transfer')}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border text-xs font-semibold transition-all ${
+                className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border text-xs font-semibold transition-all cursor-pointer ${
                   paymentMethod === 'Bank Transfer'
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-500'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                    ? 'border-pink-400 bg-pink-500/10 text-pink-600 dark:text-pink-300 font-bold shadow-xs'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-pink-300/40'
                 }`}
               >
                 <ArrowRightLeft className="w-4 h-4 mb-1" />
                 <span>Transfer</span>
               </button>
             </div>
-
-            {/* If Card is selected, display Chaabi Bank badge */}
-            {paymentMethod === 'Card' && (
-              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-[11px] font-bold flex items-center space-x-2">
-                <CreditCard className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Card mapped to: Banque Populaire (Chaabi Bank)</span>
-              </div>
-            )}
           </div>
 
           {/* Item Name & Merchant */}
@@ -382,7 +396,7 @@ export const QuickAddModal: React.FC = () => {
               </label>
               <input
                 type="text"
-                placeholder="e.g., Eau Sidi Ali, Halls Cherry, Train"
+                placeholder="e.g., Eau Sidi Ali, Lipgloss, Notebook"
                 value={itemName}
                 onChange={(e) => setItemName(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-2xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-pink-500 text-slate-900 dark:text-white"
@@ -395,7 +409,7 @@ export const QuickAddModal: React.FC = () => {
               </label>
               <input
                 type="text"
-                placeholder="e.g., BIM Maarif, Marjane, Nocibé, Zara, Inwi"
+                placeholder="e.g., Hanout, BIM, Marjane, Nocibé, Zara, Inwi"
                 value={merchant}
                 onChange={(e) => setMerchant(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-2xl text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-pink-500 text-slate-900 dark:text-white"
@@ -423,12 +437,66 @@ export const QuickAddModal: React.FC = () => {
             </label>
             <textarea
               rows={2}
-              placeholder="e.g., Skincare haul, weekly groceries, dinner with friends..."
+              placeholder="e.g., Skincare haul, snacks with friends, study materials..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-2xl text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-pink-500 text-slate-900 dark:text-white resize-none"
             />
           </div>
+
+          {/* Live Items Added In This Session */}
+          {sessionItems.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-slate-900/90 border border-pink-300/40 space-y-2.5 animate-fadeIn">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-pink-500" />
+                  <span>Added In This Session ({sessionItems.length} items)</span>
+                </span>
+                <span className="font-extrabold text-pink-500 bg-pink-500/10 px-2.5 py-0.5 rounded-full border border-pink-500/20">
+                  Total: {sessionItems.reduce((acc, it) => acc + it.amount, 0).toFixed(2)} DH
+                </span>
+              </div>
+
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                {sessionItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70 text-xs transition-all hover:border-pink-300/50"
+                  >
+                    <div className="flex items-center space-x-2 min-w-0 pr-2">
+                      <span className="w-2 h-2 rounded-full bg-pink-500 shrink-0" />
+                      <div className="truncate">
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {item.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 ml-1.5 font-medium">
+                          ({item.category})
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <span className="font-extrabold text-slate-900 dark:text-white">
+                        {item.amount.toFixed(2)} DH
+                      </span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await deleteTransaction(item.id);
+                          setSessionItems((prev) => prev.filter((it) => it.id !== item.id));
+                          setBatchCount((prev) => Math.max(0, prev - 1));
+                        }}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="Delete item from this list"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/80">

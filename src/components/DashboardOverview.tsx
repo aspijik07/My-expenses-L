@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   TrendingUp,
@@ -16,16 +16,25 @@ import {
   Scan,
   Plus,
   BookOpen,
+  Camera,
+  Target,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Layers,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 
 export const DashboardOverview: React.FC = () => {
   const {
     transactions,
     settings,
+    categories,
     setActiveTab,
     setIsQuickAddOpen,
     setIsScannerOpen,
     setEditingTransaction,
+    deleteTransaction,
   } = useApp();
 
   const currentMonthPrefix = new Date().toISOString().substring(0, 7);
@@ -44,7 +53,7 @@ export const DashboardOverview: React.FC = () => {
     .filter((t) => t.type === 'expense' && t.date.startsWith(currentMonthPrefix))
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const monthlyBudget = settings.monthlyBudget || 8500;
+  const monthlyBudget = settings.monthlyBudget || 5000;
   const budgetPercentUsed = Math.min(100, Math.round((monthlyExpenses / monthlyBudget) * 100));
   const remainingBudget = monthlyBudget - monthlyExpenses;
 
@@ -62,525 +71,409 @@ export const DashboardOverview: React.FC = () => {
     .filter((t) => t.paymentMethod === 'Bank Transfer')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const cashPercent = totalExpense > 0 ? Math.round((cashExpenses / totalExpense) * 100) : 0;
-  const cardPercent = totalExpense > 0 ? Math.round((cardExpenses / totalExpense) * 100) : 0;
-  const transferPercent = totalExpense > 0 ? Math.round((transferExpenses / totalExpense) * 100) : 0;
+  // Group expenses by category for the donut chart and ranking list
+  const categorySpending = useMemo(() => {
+    const map = new Map<string, { total: number; color: string; count: number }>();
+    expenseTransactions.forEach((t) => {
+      const catDef = categories.find((c) => c.name === t.category);
+      const color = catDef?.color || '#FF85A1';
+      const existing = map.get(t.category) || { total: 0, color, count: 0 };
+      map.set(t.category, {
+        total: existing.total + t.amount,
+        color,
+        count: existing.count + 1,
+      });
+    });
+
+    return Array.from(map.entries())
+      .map(([name, data]) => ({
+        name,
+        total: data.total,
+        color: data.color,
+        count: data.count,
+        percentage: totalExpense > 0 ? (data.total / totalExpense) * 100 : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [expenseTransactions, categories, totalExpense]);
 
   const recentTransactions = transactions.slice(0, 5);
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      {/* Welcome Banner - Pinterest Aesthetic */}
-      <div className="relative overflow-hidden rounded-3xl glass-card p-6 sm:p-8 border border-pink-200/50 bg-gradient-to-r from-pink-100/50 via-rose-100/40 to-purple-100/30 dark:from-slate-900/90 dark:via-slate-800/80 dark:to-slate-900/90">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-pink-500/10 text-pink-600 dark:text-pink-300 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Moroccan Dirham (DH) • Personal Budget</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Welcome to Your Expenses
-            </h1>
-            <p className="text-sm text-slate-600 dark:text-slate-300 max-w-xl">
-              Track your daily beauty, student living, and train transit expenses in Rabat. Scan receipts with Gemini 3.6 Flash for instant entry.
-            </p>
+    <div className="space-y-6 sm:space-y-8 animate-fadeIn relative pb-20">
+      {/* 1. TOP HERO CARD: Net Balance + Budget Progress + Payment Pills (Designed like the referenced image) */}
+      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 glass-card border border-pink-300/30 bg-gradient-to-br from-slate-900/95 via-slate-800/90 to-purple-950/40 dark:from-slate-900/95 dark:via-slate-800/90 dark:to-purple-950/40 shadow-xl space-y-5">
+        {/* Top Net Balance Header */}
+        <div className="space-y-2">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-pink-500/15 text-pink-500 text-[11px] font-extrabold uppercase tracking-wider border border-pink-400/20">
+            <Wallet className="w-3.5 h-3.5" />
+            <span>Net Balance</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setIsScannerOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-400 hover:opacity-95 shadow-sm transition-all cursor-pointer"
-            >
-              <Scan className="w-4 h-4" />
-              <span>Scan Receipt</span>
-            </button>
-            <button
-              onClick={() => setIsQuickAddOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-pink-300 transition-all shadow-xs"
-            >
-              <Plus className="w-4 h-4 text-pink-500" />
-              <span>Quick Add Entry</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('guidebook')}
-              className="flex items-center space-x-1.5 px-3 py-2.5 rounded-2xl text-xs font-bold text-purple-600 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition-all"
-              title="Open Complete User Guidebook"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span className="hidden sm:inline">Guidebook</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full bg-pink-400/15 blur-3xl pointer-events-none" />
-      </div>
-
-      {/* KPI Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {/* Total Income */}
-        <div className="glass-card rounded-3xl p-5 border border-emerald-500/20 hover:border-emerald-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Total Income
-            </span>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-              {totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-              <span className="text-sm font-semibold text-pink-500">DH</span>
-            </div>
-            <p className="mt-1 text-xs text-emerald-500 font-medium">
-              Salary, allowances & freelance
-            </p>
-          </div>
-        </div>
-
-        {/* Total Expenses */}
-        <div className="glass-card rounded-3xl p-5 border border-pink-300/30 hover:border-pink-300/50 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Total Expenses
-            </span>
-            <div className="w-10 h-10 rounded-2xl bg-pink-500/10 text-pink-500 flex items-center justify-center">
-              <TrendingDown className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-              {totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-              <span className="text-sm font-semibold text-pink-500">DH</span>
-            </div>
-            <p className="mt-1 text-xs text-pink-500 font-medium">
-              Across all categories
-            </p>
-          </div>
-        </div>
-
-        {/* Net Balance */}
-        <div className="glass-card rounded-3xl p-5 border border-purple-400/20 hover:border-purple-400/40 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Net Balance
-            </span>
-            <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-              <Wallet className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div
-              className={`text-2xl sm:text-3xl font-extrabold ${
-                netBalance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500'
+          <div className="flex items-baseline space-x-2">
+            <h2
+              className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight ${
+                netBalance >= 0 ? 'text-white' : 'text-rose-400'
               }`}
             >
-              {netBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-              <span className="text-sm font-semibold text-pink-500">DH</span>
-            </div>
-            <p className="mt-1 text-xs text-purple-500 dark:text-purple-400 font-medium">
-              {netBalance >= 0 ? 'Positive Liquidity' : 'Notice: Over Budget'}
-            </p>
+              {netBalance >= 0 ? '+' : ''}
+              {netBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h2>
+            <span className="text-xl sm:text-2xl font-bold text-pink-500">DH</span>
           </div>
+
+          <p className="text-xs font-semibold text-slate-400">
+            {netBalance >= 0 ? (
+              <span className="text-emerald-400">Positive Liquidity • On Track</span>
+            ) : (
+              <span className="text-rose-400">Budget Alert: Deficit</span>
+            )}
+          </p>
         </div>
 
-        {/* Savings Rate */}
-        <div className="glass-card rounded-3xl p-5 border border-pink-200 hover:border-pink-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Savings Rate
+        {/* Monthly Budget Progress Bar inside the Hero Card */}
+        <div className="space-y-2 pt-1 border-t border-slate-700/60">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+            <span className="flex items-center space-x-1.5">
+              <Target className="w-3.5 h-3.5 text-pink-500" />
+              <span>Monthly Budget: {monthlyBudget.toLocaleString()} DH</span>
             </span>
-            <div className="w-10 h-10 rounded-2xl bg-pink-500/10 text-pink-500 flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-              {totalIncome > 0 ? Math.max(0, Math.round(((totalIncome - totalExpense) / totalIncome) * 100)) : 0}%
-            </div>
-            <p className="mt-1 text-xs text-pink-500 font-medium">
-              Saved from earnings
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Monthly Budget Progress Bar */}
-      <div className="glass-card rounded-3xl p-6 sm:p-7 border border-pink-200/50 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-2xl bg-pink-500/10 text-pink-500 border border-pink-500/20">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Monthly Budget Goal ({new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })})
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Target set to {monthlyBudget.toLocaleString()} DH / month
-              </p>
-            </div>
+            <span className="font-bold text-pink-400">{budgetPercentUsed}% used</span>
           </div>
 
-          <div className="flex items-center space-x-4 text-right">
-            <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">Spent This Month</span>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">
-                {monthlyExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DH
-              </p>
-            </div>
-            <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
-            <div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">Remaining</span>
-              <p
-                className={`text-lg font-bold ${
-                  remainingBudget < 0 ? 'text-rose-500' : 'text-emerald-500'
-                }`}
-              >
-                {remainingBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DH
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="w-full h-3.5 bg-slate-200/80 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
+          <div className="w-full h-2.5 bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-slate-700/60">
             <div
               className={`h-full rounded-full transition-all duration-700 ease-out ${
                 budgetPercentUsed > 100
                   ? 'bg-rose-500'
                   : budgetPercentUsed > 80
-                  ? 'bg-gradient-to-r from-pink-400 to-amber-500'
+                  ? 'bg-gradient-to-r from-pink-400 to-amber-400'
                   : 'bg-gradient-to-r from-emerald-400 via-pink-400 to-purple-400'
               }`}
               style={{ width: `${Math.min(100, budgetPercentUsed)}%` }}
             />
           </div>
+        </div>
 
-          <div className="flex justify-between items-center text-xs font-semibold">
-            <span
-              className={
-                budgetPercentUsed > 90
-                  ? 'text-rose-500 flex items-center space-x-1'
-                  : 'text-slate-600 dark:text-slate-400 flex items-center space-x-1'
-              }
-            >
-              {budgetPercentUsed > 90 ? (
-                <>
-                  <AlertTriangle className="w-3.5 h-3.5 inline" />
-                  <span>{budgetPercentUsed}% used • Nearing limit</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-3.5 h-3.5 inline text-emerald-500" />
-                  <span>{budgetPercentUsed}% used • On track</span>
-                </>
-              )}
+        {/* 3 Payment Method Pills inside Hero Card (Clean Cash, Card, Bank App) */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2">
+          {/* Cash Pill */}
+          <div className="flex flex-col sm:flex-row items-center sm:space-x-2 p-2.5 rounded-2xl bg-slate-800/80 border border-slate-700/70 text-center sm:text-left">
+            <div className="w-7 h-7 rounded-xl bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0 mb-1 sm:mb-0">
+              <Banknote className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <span className="block text-[10px] font-semibold text-slate-400 truncate">Cash</span>
+              <span className="block text-xs font-bold text-white truncate">
+                {cashExpenses.toFixed(2)} DH
+              </span>
+            </div>
+          </div>
+
+          {/* Card Pill */}
+          <div className="flex flex-col sm:flex-row items-center sm:space-x-2 p-2.5 rounded-2xl bg-slate-800/80 border border-slate-700/70 text-center sm:text-left">
+            <div className="w-7 h-7 rounded-xl bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0 mb-1 sm:mb-0">
+              <CreditCard className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <span className="block text-[10px] font-semibold text-slate-400 truncate">Card</span>
+              <span className="block text-xs font-bold text-white truncate">
+                {cardExpenses.toFixed(2)} DH
+              </span>
+            </div>
+          </div>
+
+          {/* Bank App Pill */}
+          <div className="flex flex-col sm:flex-row items-center sm:space-x-2 p-2.5 rounded-2xl bg-slate-800/80 border border-slate-700/70 text-center sm:text-left">
+            <div className="w-7 h-7 rounded-xl bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0 mb-1 sm:mb-0">
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <span className="block text-[10px] font-semibold text-slate-400 truncate">Bank App</span>
+              <span className="block text-xs font-bold text-white truncate">
+                {transferExpenses.toFixed(2)} DH
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Background ambient glow */}
+        <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-pink-500/10 blur-3xl pointer-events-none" />
+      </div>
+
+      {/* 2. TWO SIDE-BY-SIDE STAT CARDS: Total Income & Total Expenses (Directly like the referenced photo) */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-6">
+        {/* Total Income Card */}
+        <div className="glass-card rounded-3xl p-4 sm:p-5 border border-emerald-500/20 bg-white/70 dark:bg-slate-900/80 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+              Total Income
             </span>
-            <span className="text-slate-500 dark:text-slate-400">
-              Budget: {monthlyBudget.toLocaleString()} DH
+            <div className="w-7 h-7 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
+              <ArrowDownLeft className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="pt-1">
+            <div className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 truncate">
+              +{totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+              <span className="text-xs font-bold">DH</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Total Expenses Card */}
+        <div className="glass-card rounded-3xl p-4 sm:p-5 border border-pink-400/20 bg-white/70 dark:bg-slate-900/80 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+              Total Expenses
             </span>
+            <div className="w-7 h-7 rounded-xl bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0">
+              <ArrowUpRight className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="pt-1">
+            <div className="text-lg sm:text-2xl font-black text-rose-500 dark:text-pink-400 truncate">
+              -{totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+              <span className="text-xs font-bold">DH</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Payment Methods Breakdown Cards (Featuring Chaabi Bank BCP exclusively) */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
+      {/* 3. SPENDING BY CATEGORY: Donut Ring Chart + Category Breakdown Bars (Exact layout from photo) */}
+      <div className="glass-card rounded-3xl p-5 sm:p-7 border border-pink-200/50 dark:border-slate-800 bg-white/70 dark:bg-slate-900/80 shadow-xs space-y-6">
+        <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-              Payment Methods Breakdown
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Spending by Category
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Moroccan spending split between Cash, Banque Populaire, and Transfers
+              Breakdown across budget categories
             </p>
           </div>
-          <span className="text-xs font-semibold text-pink-500">
-            Total {totalExpense.toFixed(2)} DH
+          <span className="text-xs font-bold px-3 py-1 rounded-full bg-pink-500/10 text-pink-500 border border-pink-500/20">
+            Total: {totalExpense.toFixed(2)} DH
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* 1. Cash */}
-          <div className="glass-card rounded-3xl p-5 border border-pink-200 hover:border-pink-300 transition-all">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-pink-500/10 text-pink-500 flex items-center justify-center">
-                  <Banknote className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Cash
-                  </h4>
-                  <span className="text-[11px] text-slate-500">ATM Withdrawals, Taxis, Local Stores</span>
-                </div>
-              </div>
-              <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-600 dark:text-pink-400">
-                {cashPercent}%
-              </span>
-            </div>
-
-            <div className="mt-4">
-              <div className="text-xl font-extrabold text-slate-900 dark:text-white">
-                {cashExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-                <span className="text-xs font-semibold text-pink-500">DH</span>
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {expenseTransactions.filter((t) => t.paymentMethod === 'Cash').length} records logged
-              </p>
-            </div>
+        {categorySpending.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400">
+            No expenses logged yet. Tap "+" or scan a receipt to see your category chart!
           </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Donut Ring Chart in Center */}
+            <div className="flex justify-center items-center py-2">
+              <div className="relative w-44 h-44 flex items-center justify-center">
+                <svg viewBox="0 0 100 100" className="w-44 h-44 -rotate-90 transform">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="38"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="11"
+                    className="text-slate-100 dark:text-slate-800"
+                  />
+                  {(() => {
+                    let accumulated = 0;
+                    const circumference = 2 * Math.PI * 38; // ~238.76
+                    return categorySpending.map((cat, i) => {
+                      const strokeDasharray = `${(cat.percentage * circumference) / 100} ${circumference}`;
+                      const strokeDashoffset = -((accumulated * circumference) / 100);
+                      accumulated += cat.percentage;
+                      return (
+                        <circle
+                          key={i}
+                          cx="50"
+                          cy="50"
+                          r="38"
+                          fill="none"
+                          stroke={cat.color}
+                          strokeWidth="11"
+                          strokeDasharray={strokeDasharray}
+                          strokeDashoffset={strokeDashoffset}
+                          className="transition-all duration-700 ease-out"
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
 
-          {/* 2. Bank Card (Chaabi Bank) */}
-          <div className="glass-card rounded-3xl p-5 border border-amber-500/30 hover:border-amber-500/50 transition-all">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-1">
-                    <span>Card Payments</span>
-                  </h4>
-                  <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                    Chaabi Bank Card (BCP)
+                {/* Center Hole Text */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    TOTAL
                   </span>
+                  <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
+                    {totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[10px] font-bold text-pink-500">DH</span>
                 </div>
               </div>
-              <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400">
-                {cardPercent}%
-              </span>
             </div>
 
-            <div className="mt-4">
-              <div className="text-xl font-extrabold text-slate-900 dark:text-white">
-                {cardExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-                <span className="text-xs font-semibold text-pink-500">DH</span>
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {expenseTransactions.filter((t) => t.paymentMethod === 'Card').length} Chaabi Card POS payments
-              </p>
-            </div>
-          </div>
-
-          {/* 3. Bank Transfer */}
-          <div className="glass-card rounded-3xl p-5 border border-purple-400/20 hover:border-purple-400/40 transition-all">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                  <ArrowRightLeft className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Bank Transfer
-                  </h4>
-                  <span className="text-[11px] text-slate-500">Online Transfers, Student Rent</span>
-                </div>
-              </div>
-              <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                {transferPercent}%
-              </span>
-            </div>
-
-            <div className="mt-4">
-              <div className="text-xl font-extrabold text-slate-900 dark:text-white">
-                {transferExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-                <span className="text-xs font-semibold text-pink-500">DH</span>
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {expenseTransactions.filter((t) => t.paymentMethod === 'Bank Transfer').length} bank wires
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Transactions / Empty Slate View */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 glass-card rounded-3xl p-6 border border-pink-200/50">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Recent Transactions
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Latest expense & income entries
-              </p>
-            </div>
-            {transactions.length > 0 && (
-              <button
-                onClick={() => setActiveTab('transactions')}
-                className="text-xs font-bold text-pink-500 hover:text-pink-600 flex items-center space-x-1"
-              >
-                <span>View All</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Empty Slate when transactions === 0 */}
-          {transactions.length === 0 ? (
-            <div className="py-10 text-center space-y-3">
-              <div className="w-14 h-14 mx-auto rounded-3xl bg-pink-500/10 text-pink-500 flex items-center justify-center">
-                <Sparkles className="w-7 h-7" />
-              </div>
-              <h4 className="text-sm font-bold text-slate-800 dark:text-white">
-                Your wallet is fresh and ready!
-              </h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                No transactions yet. Click "+ Add" to log your first coffee, beauty buy, or salary, or scan a Moroccan receipt.
-              </p>
-              <div className="pt-2 flex justify-center gap-3">
-                <button
-                  onClick={() => setIsQuickAddOpen(true)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-pink-500 shadow-sm"
-                >
-                  + Add First Entry
-                </button>
-                <button
-                  onClick={() => setIsScannerOpen(true)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                >
-                  Scan Receipt
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentTransactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  onClick={() => setEditingTransaction(tx)}
-                  style={tx.batchColor ? { borderLeft: `4px solid ${tx.batchColor}` } : undefined}
-                  className="group flex items-center justify-between p-3.5 rounded-2xl bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 border border-slate-200/50 dark:border-slate-700/50 hover:border-pink-300/60 transition-all cursor-pointer shadow-xs"
-                >
-                  <div className="flex items-center space-x-3.5">
-                    <div
-                      style={
-                        tx.batchColor
-                          ? {
-                              backgroundColor: `${tx.batchColor}18`,
-                              color: tx.batchColor,
-                              borderColor: `${tx.batchColor}40`,
-                            }
-                          : undefined
-                      }
-                      className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm border ${
-                        !tx.batchColor
-                          ? tx.type === 'income'
-                            ? 'bg-emerald-500/10 text-emerald-500 border-transparent'
-                            : 'bg-pink-500/10 text-pink-500 border-transparent'
-                          : ''
-                      }`}
-                    >
-                      {tx.type === 'income' ? <TrendingUp className="w-5 h-5" /> : <ShoppingBag className="w-5 h-5" />}
+            {/* Ranked Category List with Progress Bars */}
+            <div className="space-y-3 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+              {categorySpending.map((cat, idx) => (
+                <div key={idx} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                      <span className="text-slate-800 dark:text-slate-200">{cat.name}</span>
                     </div>
-
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">
-                          {tx.itemName || tx.merchant || tx.subcategory}
-                        </span>
-                        {tx.batchColor && tx.merchant && (
-                          <span
-                            style={{
-                              backgroundColor: `${tx.batchColor}18`,
-                              color: tx.batchColor,
-                              borderColor: `${tx.batchColor}40`,
-                            }}
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                          >
-                            {tx.merchant}
-                          </span>
-                        )}
-                        {tx.paymentMethod === 'Card' && (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
-                            Chaabi Bank
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {tx.itemName && tx.merchant && (
-                          <>
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">
-                              From {tx.merchant}
-                            </span>
-                            <span>•</span>
-                          </>
-                        )}
-                        <span>{tx.subcategory}</span>
-                        <span>•</span>
-                        <span>{tx.date}</span>
-                        <span>•</span>
-                        <span>{tx.paymentMethod}</span>
-                      </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {cat.total.toFixed(2)} DH
+                      </span>
+                      <span className="text-slate-400 text-[11px] font-medium">
+                        {cat.percentage.toFixed(1)}%
+                      </span>
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <span
-                      className={`text-sm sm:text-base font-extrabold ${
-                        tx.type === 'income' ? 'text-emerald-500' : 'text-slate-900 dark:text-white'
-                      }`}
-                    >
-                      {tx.type === 'income' ? '+' : '-'}
-                      {tx.amount.toFixed(2)} DH
-                    </span>
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500 ease-out"
+                      style={{
+                        width: `${cat.percentage}%`,
+                        backgroundColor: cat.color,
+                      }}
+                    />
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* 4. RECENT TRANSACTIONS (Styled clean with item name, category, and direct actions) */}
+      <div className="glass-card rounded-3xl p-5 sm:p-6 border border-pink-200/50 dark:border-slate-800 bg-white/70 dark:bg-slate-900/80 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Recent Transactions
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Latest expense & income entries
+            </p>
+          </div>
+          {transactions.length > 0 && (
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className="text-xs font-bold text-pink-500 hover:text-pink-600 flex items-center space-x-1 cursor-pointer"
+            >
+              <span>View All</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
           )}
         </div>
 
-        {/* Rabat Student Lifestyle Smart Tips */}
-        <div className="glass-card rounded-3xl p-6 border border-pink-200/50 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center space-x-2.5 mb-4">
-              <div className="p-2 rounded-xl bg-pink-500/10 text-pink-500">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Rabat Student Budget Tips
-              </h3>
-            </div>
-
-            <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300">
-              <div className="p-3 rounded-2xl bg-teal-500/10 border border-teal-500/20">
-                <span className="font-bold text-teal-700 dark:text-teal-300 block mb-1">
-                  ONCF Train & Tramway
-                </span>
-                Save money using monthly ONCF train student passes between Rabat and home, plus the Tramway Rabat-Salé student subscription.
-              </div>
-
-              <div className="p-3 rounded-2xl bg-pink-500/10 border border-pink-500/20">
-                <span className="font-bold text-pink-600 dark:text-pink-300 block mb-1">
-                  Gemini 3.6 Flash Scanner
-                </span>
-                Take a quick photo of paper supermarket receipts (BIM, Marjane). Gemini compresses the image on canvas to ~80KB for instant extraction!
-              </div>
-
-              <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-                <span className="font-bold text-purple-600 dark:text-purple-300 block mb-1">
-                  Custom Categories
-                </span>
-                Need a category for study materials, nail salon, or coffee with friends? Tap "Categories" in the top bar to create one freely.
-              </div>
-            </div>
+        {transactions.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400">
+            Your wallet is fresh and ready! Tap "+" below to add your first transaction.
           </div>
+        ) : (
+          <div className="space-y-2.5">
+            {recentTransactions.map((tx) => (
+              <div
+                key={tx.id}
+                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 hover:border-pink-300/60 transition-all"
+              >
+                <div className="flex items-center space-x-3 min-w-0 pr-2">
+                  <div
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                      tx.type === 'income'
+                        ? 'bg-emerald-500/10 text-emerald-500'
+                        : 'bg-pink-500/10 text-pink-500'
+                    }`}
+                  >
+                    {tx.type === 'income' ? (
+                      <TrendingUp className="w-5 h-5" />
+                    ) : (
+                      <ShoppingBag className="w-5 h-5" />
+                    )}
+                  </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
-            <span className="text-xs text-slate-500">Need full instructions?</span>
-            <button
-              onClick={() => setActiveTab('guidebook')}
-              className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center space-x-1"
-            >
-              <span>Open Guidebook</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
+                  <div className="truncate">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                        {tx.itemName || tx.merchant || tx.subcategory}
+                      </span>
+                      {tx.merchant && tx.itemName && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0">
+                          {tx.merchant}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      <span>{tx.category}</span>
+                      <span>•</span>
+                      <span>{tx.date}</span>
+                      <span>•</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {tx.paymentMethod}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0 flex items-center space-x-2">
+                  <span
+                    className={`text-sm sm:text-base font-extrabold ${
+                      tx.type === 'income'
+                        ? 'text-emerald-500'
+                        : 'text-slate-900 dark:text-white'
+                    }`}
+                  >
+                    {tx.type === 'income' ? '+' : '-'}
+                    {tx.amount.toFixed(2)} DH
+                  </span>
+                  <button
+                    onClick={() => setEditingTransaction(tx)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-pink-500 transition-colors cursor-pointer"
+                    title="Edit transaction"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => deleteTransaction(tx.id)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+                    title="Delete transaction"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* 5. FLOATING ACTION BUTTONS DOCK (Matching Bottom-Left buttons in referenced photo) */}
+      <div className="fixed bottom-20 sm:bottom-8 left-4 sm:left-8 z-40 flex flex-col items-center space-y-3">
+        {/* Floating Scan Button */}
+        <button
+          type="button"
+          onClick={() => setIsScannerOpen(true)}
+          title="Scan Moroccan Receipt with Gemini"
+          className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-lg shadow-emerald-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-white/40"
+        >
+          <Camera className="w-5 h-5" />
+        </button>
+
+        {/* Floating Add Transaction Button */}
+        <button
+          type="button"
+          onClick={() => setIsQuickAddOpen(true)}
+          title="Quick Add Transaction"
+          className="w-14 h-14 rounded-full bg-gradient-to-tr from-pink-500 to-rose-400 text-white shadow-xl shadow-pink-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-white/40"
+        >
+          <Plus className="w-7 h-7" />
+        </button>
       </div>
     </div>
   );
