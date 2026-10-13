@@ -61,8 +61,8 @@ export const DashboardOverview: React.FC = () => {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const monthlyBudget = settings.monthlyBudget || 5000;
-  const budgetPercentUsed = Math.min(100, Math.round((monthlyExpenses / monthlyBudget) * 100));
-  const remainingBudget = monthlyBudget - monthlyExpenses;
+  const budgetPercentUsed = Math.min(100, Math.round((totalExpense / monthlyBudget) * 100));
+  const remainingBudget = monthlyBudget - totalExpense;
 
   const expenseTransactions = transactions.filter((t) => t.type === 'expense');
 
@@ -163,22 +163,22 @@ export const DashboardOverview: React.FC = () => {
       <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 border border-pink-200/70 dark:border-pink-500/20 bg-white/95 dark:bg-gradient-to-br dark:from-slate-900/95 dark:via-slate-800/90 dark:to-purple-950/40 shadow-xl shadow-pink-500/5 space-y-5">
         {/* Top Header: Big Monthly Spending + Smaller Net Balance Stat */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          {/* Big Prominent Monthly Expenses */}
+          {/* Big Prominent Total Expenses */}
           <div className="space-y-2">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-extrabold uppercase tracking-wider border border-rose-400/20">
               <TrendingDown className="w-3.5 h-3.5" />
-              <span>This Month's Spending</span>
+              <span>Total Expenses</span>
             </div>
 
             <div className="flex items-baseline space-x-2">
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
-                -{monthlyExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                -{totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h2>
               <span className="text-xl sm:text-2xl font-bold text-pink-500">DH</span>
             </div>
 
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {budgetPercentUsed}% of {monthlyBudget.toLocaleString()} DH Monthly Budget
+              Total recorded spending across all categories
             </p>
           </div>
 
