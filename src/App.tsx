@@ -55,13 +55,6 @@ const MainAppContent: React.FC = () => {
             <span>•</span>
             <span className="text-pink-500 font-semibold">Moroccan Dirham (DH)</span>
           </div>
-
-          <div className="flex items-center space-x-4">
-            <span className="inline-flex items-center space-x-1.5 text-slate-400">
-              <Heart className="w-3.5 h-3.5 text-pink-500" />
-              <span>Designed with style</span>
-            </span>
-          </div>
         </div>
       </footer>
     </div>

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   TrendingUp,
@@ -24,6 +24,8 @@ import {
   Edit2,
   Trash2,
   PiggyBank,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 
@@ -37,6 +39,7 @@ export const DashboardOverview: React.FC = () => {
     setIsScannerOpen,
     setEditingTransaction,
     deleteTransaction,
+    deleteTransactionsBatch,
   } = useApp();
 
   const currentMonthPrefix = new Date().toISOString().substring(0, 7);
@@ -119,41 +122,89 @@ export const DashboardOverview: React.FC = () => {
     });
   }, [expenseTransactions, totalExpense]);
 
-  const recentTransactions = transactions.slice(0, 5);
+  // Full Month Transactions for current month
+  const currentMonthTransactions = useMemo(() => {
+    return transactions.filter((t) => t.date.startsWith(currentMonthPrefix));
+  }, [transactions, currentMonthPrefix]);
+
+  const displayedTransactions = currentMonthTransactions.length > 0 ? currentMonthTransactions : transactions;
+
+  const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
+
+  const handleToggleSelectTx = (id: string) => {
+    setSelectedTxIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAllMonth = () => {
+    if (selectedTxIds.size === displayedTransactions.length) {
+      setSelectedTxIds(new Set());
+    } else {
+      setSelectedTxIds(new Set(displayedTransactions.map((t) => t.id)));
+    }
+  };
+
+  const handleBulkDeleteMonth = async () => {
+    if (selectedTxIds.size === 0) return;
+    const count = selectedTxIds.size;
+    if (window.confirm(`Are you sure you want to delete ${count} selected transaction${count > 1 ? 's' : ''}?`)) {
+      await deleteTransactionsBatch(Array.from(selectedTxIds));
+      setSelectedTxIds(new Set());
+    }
+  };
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-fadeIn relative pb-20">
-      {/* 1. TOP HERO CARD: Net Balance + Budget Progress + Payment Pills */}
+      {/* 1. TOP HERO CARD: Monthly Spending (BIG) + Net Balance (Smaller) + Savings Reserve + Payment Pills */}
       <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 border border-pink-200/70 dark:border-pink-500/20 bg-white/95 dark:bg-gradient-to-br dark:from-slate-900/95 dark:via-slate-800/90 dark:to-purple-950/40 shadow-xl shadow-pink-500/5 space-y-5">
-        {/* Top Net Balance Header */}
-        <div className="space-y-2">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-pink-500/10 text-pink-600 dark:text-pink-400 text-[11px] font-extrabold uppercase tracking-wider border border-pink-400/20">
-            <Wallet className="w-3.5 h-3.5" />
-            <span>Net Balance</span>
+        {/* Top Header: Big Monthly Spending + Smaller Net Balance Stat */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          {/* Big Prominent Monthly Expenses */}
+          <div className="space-y-2">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[11px] font-extrabold uppercase tracking-wider border border-rose-400/20">
+              <TrendingDown className="w-3.5 h-3.5" />
+              <span>This Month's Spending</span>
+            </div>
+
+            <div className="flex items-baseline space-x-2">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
+                -{monthlyExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h2>
+              <span className="text-xl sm:text-2xl font-bold text-pink-500">DH</span>
+            </div>
+
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {budgetPercentUsed}% of {monthlyBudget.toLocaleString()} DH Monthly Budget
+            </p>
           </div>
 
-          <div className="flex items-baseline space-x-2">
-            <h2
-              className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight ${
-                netBalance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500 dark:text-rose-400'
-              }`}
-            >
-              {netBalance >= 0 ? '+' : ''}
-              {netBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </h2>
-            <span className="text-xl sm:text-2xl font-bold text-pink-500">DH</span>
+          {/* Smaller Net Balance Pill inside the Hero Card */}
+          <div className="flex items-center space-x-3.5 p-3.5 sm:p-4 rounded-2xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${netBalance >= 0 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/15 text-rose-500'}`}>
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Net Balance Remaining
+              </span>
+              <div className="flex items-baseline space-x-1">
+                <span className={`text-base sm:text-lg font-black ${netBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                  {netBalance >= 0 ? '+' : ''}{netBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-xs font-bold text-pink-500">DH</span>
+              </div>
+              <span className="block text-[10px] font-semibold text-slate-400 mt-0.5">
+                {netBalance >= 0 ? 'Positive Liquidity' : 'Budget Deficit'}
+              </span>
+            </div>
           </div>
-
-          <p className="text-xs font-semibold">
-            {netBalance >= 0 ? (
-              <span className="text-emerald-600 dark:text-emerald-400">Positive Liquidity • On Track</span>
-            ) : (
-              <span className="text-rose-500 dark:text-rose-400">Budget Alert: Deficit</span>
-            )}
-          </p>
         </div>
 
-        {/* Savings Mazalin men Flous li Dakhlo (Remaining from Income) */}
+        {/* Savings Reserve (100% English) */}
         <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-pink-500/10 to-purple-500/10 border border-emerald-500/20 dark:border-emerald-500/30">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
@@ -163,7 +214,7 @@ export const DashboardOverview: React.FC = () => {
               <div className="min-w-0">
                 <div className="flex items-center space-x-2 flex-wrap">
                   <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                    Savings • Mazal men Flous li Dakhlo
+                    Savings Reserve • Preserved from Income
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/20">
                     {savingsRate}% Preserved
@@ -188,7 +239,7 @@ export const DashboardOverview: React.FC = () => {
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">DH</span>
               </div>
               <span className="block text-[10px] font-semibold text-slate-400">
-                {remainingSavings >= 0 ? 'Liquid Savings Left' : 'Deficit Exceeded'}
+                {remainingSavings >= 0 ? 'Net Cash Savings Left' : 'Income Deficit'}
               </span>
             </div>
           </div>
@@ -432,44 +483,107 @@ export const DashboardOverview: React.FC = () => {
         )}
       </div>
 
-      {/* 4. RECENT TRANSACTIONS (Styled clean with item name, category, and direct actions) */}
+      {/* 4. THIS MONTH'S TRANSACTIONS (Full Month entries with Multi-Selection delete) */}
       <div className="glass-card rounded-3xl p-5 sm:p-6 border border-pink-200/50 dark:border-slate-800 bg-white/70 dark:bg-slate-900/80 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Recent Transactions
+              This Month's Transactions
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Latest expense & income entries
+              {displayedTransactions.length} transaction{displayedTransactions.length > 1 ? 's' : ''} recorded in {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}
             </p>
           </div>
-          {transactions.length > 0 && (
-            <button
-              onClick={() => setActiveTab('transactions')}
-              className="text-xs font-bold text-pink-500 hover:text-pink-600 flex items-center space-x-1 cursor-pointer"
-            >
-              <span>View All</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          )}
+
+          <div className="flex items-center space-x-2">
+            {displayedTransactions.length > 0 && (
+              <button
+                type="button"
+                onClick={handleSelectAllMonth}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-pink-300 transition-all cursor-pointer inline-flex items-center space-x-1.5"
+              >
+                {selectedTxIds.size === displayedTransactions.length ? (
+                  <CheckSquare className="w-3.5 h-3.5 text-pink-500" />
+                ) : (
+                  <Square className="w-3.5 h-3.5 text-slate-400" />
+                )}
+                <span>{selectedTxIds.size === displayedTransactions.length ? 'Deselect All' : 'Select All'}</span>
+              </button>
+            )}
+
+            {transactions.length > 0 && (
+              <button
+                onClick={() => setActiveTab('transactions')}
+                className="text-xs font-bold text-pink-500 hover:text-pink-600 flex items-center space-x-1 cursor-pointer ml-1"
+              >
+                <span>Full History</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
-        {transactions.length === 0 ? (
+        {/* Bulk Selection Notification Bar */}
+        {selectedTxIds.size > 0 && (
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-xs animate-fadeIn">
+            <span className="font-bold text-rose-600 dark:text-rose-400">
+              {selectedTxIds.size} transaction{selectedTxIds.size > 1 ? 's' : ''} selected
+            </span>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setSelectedTxIds(new Set())}
+                className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-semibold cursor-pointer px-2"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDeleteMonth}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Selected ({selectedTxIds.size})</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {displayedTransactions.length === 0 ? (
           <div className="py-8 text-center text-xs text-slate-400">
-            Your wallet is fresh and ready! Tap "+" below to add your first transaction.
+            No transactions found for this month! Tap "+" below to add your first expense or income.
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {recentTransactions.map((tx) => {
+          <div className="max-h-[560px] overflow-y-auto space-y-2.5 pr-1">
+            {displayedTransactions.map((tx) => {
               const matchedColor =
                 categorySpending.find((c) => c.name === tx.category)?.color || '#EC4899';
+              const isSelected = selectedTxIds.has(tx.id);
 
               return (
                 <div
                   key={tx.id}
-                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 hover:border-pink-300/60 transition-all"
+                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                    isSelected
+                      ? 'bg-pink-500/10 border-pink-500 ring-1 ring-pink-500/30'
+                      : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/60 hover:border-pink-300/60'
+                  }`}
                 >
                   <div className="flex items-center space-x-3 min-w-0 pr-2">
+                    {/* Selection Checkbox */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSelectTx(tx.id)}
+                      className="p-0.5 rounded text-slate-400 hover:text-pink-500 transition-colors shrink-0 cursor-pointer"
+                      title={isSelected ? 'Deselect transaction' : 'Select for deletion'}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-4 h-4 text-pink-500" />
+                      ) : (
+                        <Square className="w-4 h-4 text-slate-300 dark:text-slate-600 hover:text-pink-400" />
+                      )}
+                    </button>
+
                     <div
                       className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border"
                       style={
@@ -493,59 +607,59 @@ export const DashboardOverview: React.FC = () => {
                       )}
                     </div>
 
-                  <div className="truncate">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                        {tx.itemName || tx.merchant || tx.subcategory}
-                      </span>
-                      {tx.merchant && tx.itemName && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0">
-                          {tx.merchant}
+                    <div className="truncate">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                          {tx.itemName || tx.merchant || tx.subcategory}
                         </span>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      <span>{tx.category}</span>
-                      <span>•</span>
-                      <span>{tx.date}</span>
-                      <span>•</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">
-                        {tx.paymentMethod}
-                      </span>
+                        {tx.merchant && tx.itemName && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0">
+                            {tx.merchant}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        <span>{tx.category}</span>
+                        <span>•</span>
+                        <span>{tx.date}</span>
+                        <span>•</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {tx.paymentMethod}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="text-right shrink-0 flex items-center space-x-2">
-                  <span
-                    className={`text-sm sm:text-base font-extrabold ${
-                      tx.type === 'income'
-                        ? 'text-emerald-500'
-                        : 'text-slate-900 dark:text-white'
-                    }`}
-                  >
-                    {tx.type === 'income' ? '+' : '-'}
-                    {tx.amount.toFixed(2)} DH
-                  </span>
-                  <button
-                    onClick={() => setEditingTransaction(tx)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-pink-500 transition-colors cursor-pointer"
-                    title="Edit transaction"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => deleteTransaction(tx.id)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
-                    title="Delete transaction"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="text-right shrink-0 flex items-center space-x-2">
+                    <span
+                      className={`text-sm sm:text-base font-extrabold ${
+                        tx.type === 'income'
+                          ? 'text-emerald-500'
+                          : 'text-slate-900 dark:text-white'
+                      }`}
+                    >
+                      {tx.type === 'income' ? '+' : '-'}
+                      {tx.amount.toFixed(2)} DH
+                    </span>
+                    <button
+                      onClick={() => setEditingTransaction(tx)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-pink-500 transition-colors cursor-pointer"
+                      title="Edit transaction"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => deleteTransaction(tx.id)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+                      title="Delete transaction"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
         )}
       </div>
 

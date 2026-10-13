@@ -32,6 +32,7 @@ interface AppContextType {
   addTransactionsBatch: (txs: Omit<Transaction, 'id' | 'createdAt'>[]) => Promise<Transaction[]>;
   updateTransaction: (tx: Transaction) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  deleteTransactionsBatch: (ids: string[]) => Promise<void>;
   isCloudConnected: boolean;
   syncLocalToCloud: () => Promise<void>;
   settings: AppSettings;
@@ -587,6 +588,28 @@ const MASTER_OWNER = {
     }
   };
 
+  const deleteTransactionsBatch = async (ids: string[]) => {
+    if (!ids || ids.length === 0) return;
+    const idSet = new Set(ids);
+    setTransactions((prev) => prev.filter((t) => !idSet.has(t.id)));
+    addLog(
+      'DELETE',
+      `Bulk Deleted ${ids.length} transactions`,
+      `${ids.length} records removed`,
+      'warning'
+    );
+
+    if (isFirebaseConfigured()) {
+      try {
+        await Promise.allSettled(
+          ids.map((id) => deleteTransactionFromFirestore(SHARED_USER_ID, id))
+        );
+      } catch (err) {
+        console.warn('Firestore bulk delete sync notice:', err);
+      }
+    }
+  };
+
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
     addLog('SETTINGS_UPDATE', 'Preferences Updated', 'Budget or API key settings modified');
@@ -804,6 +827,7 @@ const MASTER_OWNER = {
         addTransactionsBatch,
         updateTransaction,
         deleteTransaction,
+        deleteTransactionsBatch,
         isCloudConnected,
         syncLocalToCloud,
         settings,

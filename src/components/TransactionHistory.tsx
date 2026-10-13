@@ -18,11 +18,13 @@ import {
   ArrowUpDown,
   ShoppingBag,
   TrendingUp,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 
 export const TransactionHistory: React.FC = () => {
-  const { transactions, deleteTransaction, setEditingTransaction, categories } = useApp();
+  const { transactions, deleteTransaction, deleteTransactionsBatch, setEditingTransaction, categories } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
@@ -33,6 +35,7 @@ export const TransactionHistory: React.FC = () => {
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Current month prefix (YYYY-MM)
   const currentMonth = new Date().toISOString().substring(0, 7);
@@ -120,6 +123,39 @@ export const TransactionHistory: React.FC = () => {
 
   const allCategoryNames = Array.from(new Set(categories.map((c) => c.name)));
 
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllFiltered = () => {
+    if (selectedIds.size === filteredTransactions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredTransactions.map((t) => t.id)));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    if (window.confirm(`Are you sure you want to delete ${count} selected transaction${count > 1 ? 's' : ''}?`)) {
+      await deleteTransactionsBatch(Array.from(selectedIds));
+      setSelectedIds(new Set());
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Page Title & Controls */}
@@ -133,14 +169,73 @@ export const TransactionHistory: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={exportToCSV}
-          className="inline-flex items-center space-x-2 px-4 py-2 rounded-2xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-pink-300 shadow-sm transition-all self-start sm:self-auto"
-        >
-          <Download className="w-4 h-4 text-pink-500" />
-          <span>Export CSV</span>
-        </button>
+        <div className="flex items-center space-x-2 flex-wrap">
+          {filteredTransactions.length > 0 && (
+            <button
+              type="button"
+              onClick={handleSelectAllFiltered}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-pink-300 shadow-sm transition-all cursor-pointer"
+            >
+              {selectedIds.size === filteredTransactions.length ? (
+                <CheckSquare className="w-4 h-4 text-pink-500" />
+              ) : (
+                <Square className="w-4 h-4 text-slate-400" />
+              )}
+              <span>{selectedIds.size === filteredTransactions.length ? 'Deselect All' : 'Select All'}</span>
+            </button>
+          )}
+
+          <button
+            onClick={exportToCSV}
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-2xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-pink-300 shadow-sm transition-all self-start sm:self-auto cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-pink-500" />
+            <span>Export CSV</span>
+          </button>
+        </div>
       </div>
+
+      {/* Floating Sticky Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-20 z-20 flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-slate-900/95 border-2 border-pink-500/60 backdrop-blur-md shadow-xl shadow-pink-500/10 animate-fadeIn">
+          <div className="flex items-center space-x-2.5">
+            <span className="w-7 h-7 rounded-lg bg-pink-500 text-white flex items-center justify-center text-xs font-black shadow-sm">
+              {selectedIds.size}
+            </span>
+            <div>
+              <p className="text-xs font-bold text-slate-900 dark:text-white">
+                {selectedIds.size} transaction{selectedIds.size > 1 ? 's' : ''} selected
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Sum of selected:{' '}
+                {filteredTransactions
+                  .filter((t) => selectedIds.has(t.id))
+                  .reduce((sum, t) => sum + (t.type === 'expense' ? -t.amount : t.amount), 0)
+                  .toFixed(2)}{' '}
+                DH
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-md shadow-rose-500/20 transition-all active:scale-95 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Selected ({selectedIds.size})</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="glass-card rounded-3xl p-5 border border-pink-200/50 space-y-4">
@@ -310,16 +405,34 @@ export const TransactionHistory: React.FC = () => {
           filteredTransactions.map((tx) => {
             const isExpanded = expandedTxId === tx.id;
             const hasItems = tx.items && tx.items.length > 0;
+            const isSelected = selectedIds.has(tx.id);
 
             return (
               <div
                 key={tx.id}
                 style={tx.batchColor ? { borderLeft: `4px solid ${tx.batchColor}` } : undefined}
-                className="glass-card rounded-3xl p-4 sm:p-5 border border-slate-200/60 dark:border-slate-800/80 hover:border-rosegold-400/40 transition-all shadow-sm"
+                className={`glass-card rounded-3xl p-4 sm:p-5 border transition-all shadow-sm ${
+                  isSelected
+                    ? 'border-pink-500 bg-pink-500/5 ring-1 ring-pink-500/40'
+                    : 'border-slate-200/60 dark:border-slate-800/80 hover:border-pink-300/40'
+                }`}
               >
                 <div className="flex items-center justify-between">
-                  {/* Left: Icon & Info */}
-                  <div className="flex items-center space-x-3.5">
+                  {/* Left: Checkbox + Icon & Info */}
+                  <div className="flex items-center space-x-3 sm:space-x-3.5 min-w-0 pr-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSelect(tx.id)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-pink-500 transition-colors shrink-0 cursor-pointer"
+                      title={isSelected ? 'Deselect transaction' : 'Select for bulk delete'}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-5 h-5 text-pink-500" />
+                      ) : (
+                        <Square className="w-5 h-5 text-slate-300 dark:text-slate-600 hover:text-pink-400" />
+                      )}
+                    </button>
+
                     <div
                       style={
                         tx.batchColor
