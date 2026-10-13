@@ -56,6 +56,7 @@ export const ReceiptScannerModal: React.FC = () => {
   } = useApp();
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [lastImageData, setLastImageData] = useState<{ base64: string; mimeType: string } | null>(null);
   const [originalSizeKB, setOriginalSizeKB] = useState<number>(0);
   const [compressedSizeKB, setCompressedSizeKB] = useState<number>(0);
   const [isCompressing, setIsCompressing] = useState<boolean>(false);
@@ -78,6 +79,7 @@ export const ReceiptScannerModal: React.FC = () => {
   const handleClose = () => {
     setIsScannerOpen(false);
     setImagePreview(null);
+    setLastImageData(null);
     setScanResult(null);
     setEditableItems([]);
     setActiveBatchColor(null);
@@ -85,26 +87,12 @@ export const ReceiptScannerModal: React.FC = () => {
     setErrorMessage(null);
   };
 
-  const processAndScanImage = async (file: File) => {
+  const executeScan = async (base64: string, mimeType: string) => {
+    setIsScanning(true);
     setErrorMessage(null);
     setFailoverLogs([]);
-    setScanResult(null);
-    setActiveKeyAttempt(0);
-
-    const origKB = Math.round(file.size / 1024);
-    setOriginalSizeKB(origKB);
-    setIsCompressing(true);
 
     try {
-      // 1. Canvas Compression to ~80KB
-      const { base64, mimeType, sizeKB, dataUrl } = await compressImageTo80KB(file, 80);
-      setCompressedSizeKB(sizeKB);
-      setImagePreview(dataUrl);
-      setIsCompressing(false);
-
-      // 2. Scan with Gemini 3.6 Flash and 4-Key rotation
-      setIsScanning(true);
-
       const result = await scanReceiptWithRotation(
         base64,
         mimeType,
@@ -140,7 +128,7 @@ export const ReceiptScannerModal: React.FC = () => {
         category: it.category || result.suggestedCategory,
       }));
 
-      // If items sum is less than total (e.g., tax/timbre fiscal of 0.15 DH on Marjane ticket), include difference line
+      // Timbre fiscal difference check
       const itemsSum = populatedItems.reduce((s, it) => s + it.price, 0);
       const remainingDiff = Math.round((result.total - itemsSum) * 100) / 100;
       if (remainingDiff > 0.05) {
@@ -160,11 +148,44 @@ export const ReceiptScannerModal: React.FC = () => {
         `Total: ${result.total.toFixed(2)} DH via Key #${result.keyUsedIndex + 1} (${populatedItems.length} items parsed)`
       );
     } catch (err: any) {
-      setIsCompressing(false);
       setIsScanning(false);
       const msg = err.message || 'Failed to scan receipt';
       setErrorMessage(msg);
       addLog('SCAN_RECEIPT', 'Scan Failed', msg, 'error');
+    }
+  };
+
+  const handleRetryScan = async () => {
+    if (!lastImageData) return;
+    await executeScan(lastImageData.base64, lastImageData.mimeType);
+  };
+
+  const processAndScanImage = async (file: File) => {
+    setErrorMessage(null);
+    setFailoverLogs([]);
+    setScanResult(null);
+    setActiveKeyAttempt(0);
+
+    const origKB = Math.round(file.size / 1024);
+    setOriginalSizeKB(origKB);
+    setIsCompressing(true);
+
+    try {
+      // 1. Canvas Compression with loading verification to ~80KB
+      const { base64, mimeType, sizeKB, dataUrl } = await compressImageTo80KB(file, 80);
+      setCompressedSizeKB(sizeKB);
+      setImagePreview(dataUrl);
+      setLastImageData({ base64, mimeType });
+      setIsCompressing(false);
+
+      // 2. Scan with intelligent multi-model cascade & key rotation
+      await executeScan(base64, mimeType);
+    } catch (err: any) {
+      setIsCompressing(false);
+      setIsScanning(false);
+      const msg = err.message || 'Failed to process receipt image';
+      setErrorMessage(msg);
+      addLog('SCAN_RECEIPT', 'Image Processing Failed', msg, 'error');
     }
   };
 
@@ -390,28 +411,83 @@ export const ReceiptScannerModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Error message */}
+        {/* Error message + Retry Action */}
         {errorMessage && (
-          <div className="mt-3 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{errorMessage}</span>
+          <div className="mt-4 p-4 rounded-3xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start space-x-2.5">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-500" />
+                <div className="space-y-1">
+                  <span className="font-bold block text-rose-600 dark:text-rose-400">Scan Notice</span>
+                  <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium">
+                    {errorMessage}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setIsScannerOpen(false);
+                  setIsSettingsOpen(true);
+                }}
+                className="text-[11px] font-bold text-pink-500 hover:text-pink-600 underline shrink-0 px-2 py-1 rounded-lg hover:bg-pink-500/10 transition-colors"
+              >
+                Settings Keys
+              </button>
             </div>
-            <button
-              onClick={() => {
-                setIsScannerOpen(false);
-                setIsSettingsOpen(true);
-              }}
-              className="text-xs font-bold underline ml-2"
-            >
-              Add API Key
-            </button>
+
+            {/* Prominent Retry Button if image is loaded */}
+            {lastImageData && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 border-t border-rose-500/20">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Image is saved in memory. You do not need to re-take or re-upload.
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRetryScan}
+                  disabled={isScanning}
+                  className="inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold text-xs shadow-md shadow-pink-500/25 transition-all transform active:scale-95 disabled:opacity-50 shrink-0"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+                  <span>Retry Scan</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {/* Upload & Capture Zone - Split into 2 stylish cards */}
         {!scanResult && (
           <div className="mt-5 space-y-4">
+            {/* Captured photo preview banner when error occurred and retry is available */}
+            {imagePreview && errorMessage && !isScanning && !isCompressing && (
+              <div className="p-3.5 rounded-3xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+                <div className="flex items-center space-x-3 min-w-0">
+                  <img
+                    src={imagePreview}
+                    alt="Captured receipt"
+                    className="w-12 h-12 object-cover rounded-xl border border-pink-400/40 shadow-sm shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                      Receipt Image Saved
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {compressedSizeKB} KB optimized • Click Retry to re-run AI OCR
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRetryScan}
+                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-2xl bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs shadow-sm shadow-pink-500/25 shrink-0 transition-transform active:scale-95"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Retry</span>
+                </button>
+              </div>
+            )}
             {isScanning || isCompressing ? (
               <div className="border-2 border-pink-400/40 rounded-3xl p-10 text-center bg-pink-500/5 space-y-3">
                 <div className="mx-auto w-14 h-14 rounded-2xl bg-pink-500/15 text-pink-500 flex items-center justify-center">

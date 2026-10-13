@@ -102,7 +102,7 @@ const decodeKey = (b64: string): string => {
 const DEFAULT_SETTINGS: AppSettings = {
   geminiKeys: [
     decodeKey('QVEuQWI4Uk42S1lIcGNOVUtTdV9IMUpCeWotT3NxdWlXcUVRN3ZKOXlZVXBMSktkeTBFb2c='),
-    decodeKey('QVEuQWI4Uk42SWdBdXJITS0xQnh1NHpTeTJ1TVlOUHVZaF9WQncwQVdmNGVSTHNGY29tUQ=='),
+    '',
     '',
     '',
   ],
@@ -167,10 +167,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.monthlyBudget === 8500) parsed.monthlyBudget = 5000;
-        // If keys in device localStorage are empty, auto-populate with the master default keys!
-        if (!parsed.geminiKeys || !parsed.geminiKeys[0] || parsed.geminiKeys[0].trim().length < 5) {
-          parsed.geminiKeys = DEFAULT_SETTINGS.geminiKeys;
+        
+        // Sanitize Gemini Keys: ensure working master key is always in Slot #1 and remove 403 denied key
+        const masterWorkingKey = DEFAULT_SETTINGS.geminiKeys[0];
+        if (!parsed.geminiKeys || !Array.isArray(parsed.geminiKeys)) {
+          parsed.geminiKeys = [...DEFAULT_SETTINGS.geminiKeys];
+        } else {
+          // If slot 0 is empty or contains known denied key, set to verified master key
+          if (!parsed.geminiKeys[0] || parsed.geminiKeys[0].includes('AQ.Ab8RN6Ig')) {
+            parsed.geminiKeys[0] = masterWorkingKey;
+          }
+          // Clean out denied key from other slots
+          parsed.geminiKeys = parsed.geminiKeys.map((k: string) =>
+            k && k.includes('AQ.Ab8RN6Ig') ? '' : k
+          );
         }
+
         // Auto-configure master shared Firebase config if missing
         if (!parsed.firebaseConfig || !parsed.firebaseConfig.apiKey) {
           parsed.firebaseConfig = DEFAULT_FIREBASE_CONFIG;

@@ -23,6 +23,7 @@ import {
   Layers,
   Edit2,
   Trash2,
+  PiggyBank,
 } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 
@@ -49,6 +50,8 @@ export const DashboardOverview: React.FC = () => {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const netBalance = totalIncome - totalExpense;
+  const remainingSavings = totalIncome - totalExpense;
+  const savingsRate = totalIncome > 0 ? Math.max(0, Math.round((remainingSavings / totalIncome) * 100)) : 0;
 
   const monthlyExpenses = transactions
     .filter((t) => t.type === 'expense' && t.date.startsWith(currentMonthPrefix))
@@ -148,6 +151,59 @@ export const DashboardOverview: React.FC = () => {
               <span className="text-rose-500 dark:text-rose-400">Budget Alert: Deficit</span>
             )}
           </p>
+        </div>
+
+        {/* Savings Mazalin men Flous li Dakhlo (Remaining from Income) */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-pink-500/10 to-purple-500/10 border border-emerald-500/20 dark:border-emerald-500/30">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-sm">
+                <PiggyBank className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center space-x-2 flex-wrap">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                    Savings • Mazal men Flous li Dakhlo
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/20">
+                    {savingsRate}% Preserved
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  {totalExpense.toFixed(2)} DH spent out of {totalIncome.toFixed(2)} DH total income
+                </p>
+              </div>
+            </div>
+
+            <div className="text-left sm:text-right shrink-0">
+              <div className="flex items-baseline sm:justify-end space-x-1">
+                <span
+                  className={`text-lg sm:text-xl font-black ${
+                    remainingSavings >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'
+                  }`}
+                >
+                  {remainingSavings >= 0 ? '+' : ''}
+                  {remainingSavings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">DH</span>
+              </div>
+              <span className="block text-[10px] font-semibold text-slate-400">
+                {remainingSavings >= 0 ? 'Liquid Savings Left' : 'Deficit Exceeded'}
+              </span>
+            </div>
+          </div>
+
+          {/* Mini savings progress indicator */}
+          <div className="w-full h-1.5 bg-slate-200/70 dark:bg-slate-700/60 rounded-full overflow-hidden mt-3">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${
+                remainingSavings < 0
+                  ? 'bg-rose-500'
+                  : 'bg-gradient-to-r from-emerald-400 via-pink-400 to-purple-400'
+              }`}
+              style={{ width: `${Math.max(0, Math.min(100, savingsRate))}%` }}
+            />
+          </div>
         </div>
 
         {/* Monthly Budget Progress Bar inside the Hero Card */}

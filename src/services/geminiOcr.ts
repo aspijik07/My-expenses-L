@@ -12,9 +12,22 @@ export async function compressImageTo80KB(
   return new Promise((resolve, reject) => {
     const img = new Image();
 
-    const processImage = () => {
+    const processImage = async () => {
+      try {
+        if (img.decode) {
+          await img.decode();
+        }
+      } catch {
+        // Fallback if decode is not supported in browser
+      }
+
       // Calculate scaled dimensions to keep aspect ratio while reducing pixel count
       let { width, height } = img;
+      if (!width || !height) {
+        reject(new Error('Image failed to load: zero dimensions detected'));
+        return;
+      }
+
       const MAX_DIM = 1200;
       if (width > MAX_DIM || height > MAX_DIM) {
         if (width > height) {
@@ -52,6 +65,11 @@ export async function compressImageTo80KB(
       }
 
       const base64 = dataUrl.split(',')[1];
+      if (!base64 || base64.length < 100) {
+        reject(new Error('Generated image payload is invalid or empty'));
+        return;
+      }
+
       resolve({
         base64,
         mimeType: 'image/jpeg',
@@ -77,7 +95,7 @@ export async function compressImageTo80KB(
 }
 
 /**
- * Formatted prompt instructing Gemini 3.6 Flash to parse Moroccan receipts.
+ * Formatted prompt instructing Gemini AI OCR to parse Moroccan receipts.
  */
 function buildOcrPrompt(): string {
   const categoriesContext = EXPENSE_CATEGORIES.map(
@@ -88,9 +106,9 @@ function buildOcrPrompt(): string {
 You are an expert AI OCR financial auditor specialized in Moroccan receipts, supermarket bills, store invoices, and utility notices.
 Common merchants and bills in Morocco include:
 - Supermarkets & Groceries: BIM, Marjane, Marjane Market, Carrefour, Supeco, Acima, Label'Vie, local neighborhood grocery stores.
-- Utilities & Telecoms: Redal (Rabat), Lydec, ONEE, Inwi, Maroc Telecom (IAM), Orange Maroc.
+- Utilities & Telecoms: Lydec, ONEE, Inwi, Maroc Telecom (IAM), Orange Maroc.
 - Beauty & Personal Care: Nocibé, Yan&One, Marionnaud, Yves Rocher, local pharmacies, beauty salons, Sephora.
-- Transit & Mobility: ONCF Trains (Al Boraq / TNR Rabat), Tramway Rabat-Salé, InDrive, Heetch, Careem, Alsa Bus Rabat.
+- Transit & Mobility: ONCF Trains (Al Boraq / TNR), Tramway, InDrive, Heetch, Careem, Bus.
 
 Extract all relevant financial information from this Moroccan receipt/invoice image and return ONLY a valid, raw JSON object (strictly NO markdown formatting, no code blocks, no backticks, no explanations).
 
@@ -126,13 +144,23 @@ Notes:
 export interface FailoverEvent {
   fromKeyIndex: number;
   toKeyIndex: number;
+  modelUsed?: string;
   errorCode?: number;
   errorMessage: string;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Candidate models in priority order: gemini-3.5-flash-lite has lowest token consumption and highest uptime
+const CANDIDATE_MODELS = [
+  'gemini-3.5-flash-lite',
+  'gemini-flash-lite-latest',
+  'gemini-3.6-flash',
+];
+
 /**
- * Scans receipt image using Gemini 3.6 Flash with automatic 0ms failover
- * across up to 4 configured API Keys.
+ * Scans receipt image using Gemini Vision with intelligent multi-model cascade,
+ * 1.5s controlled backoff on 503/429 spikes, and automatic key rotation.
  */
 export async function scanReceiptWithRotation(
   base64Image: string,
@@ -153,112 +181,153 @@ export async function scanReceiptWithRotation(
   const prompt = buildOcrPrompt();
   const errors: string[] = [];
 
-  for (let i = 0; i < validKeys.length; i++) {
-    const { key, index } = validKeys[i];
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(
-      key
-    )}`;
+  for (let kIdx = 0; kIdx < validKeys.length; kIdx++) {
+    const { key, index: keyIndex } = validKeys[kIdx];
 
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { text: prompt },
-                {
-                  inline_data: {
-                    mime_type: mimeType,
-                    data: base64Image,
-                  },
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 2048,
+    // Try each responsive candidate model for this key
+    for (let mIdx = 0; mIdx < CANDIDATE_MODELS.length; mIdx++) {
+      const model = CANDIDATE_MODELS[mIdx];
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(
+        key
+      )}`;
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-        }),
-      });
-
-      // Handle Quota Limit (429), Server Busy (503), Auth (400/401/403) or generic errors
-      if (!response.ok) {
-        const errorText = await response.text();
-        const reason = `Key #${index + 1} failed with HTTP ${response.status}: ${errorText.substring(0, 120)}`;
-        errors.push(reason);
-
-        // If there's another key available, trigger failover callback with 0ms delay
-        if (i < validKeys.length - 1) {
-          const nextIndex = validKeys[i + 1].index;
-          onFailover?.({
-            fromKeyIndex: index,
-            toKeyIndex: nextIndex,
-            errorCode: response.status,
-            errorMessage: `HTTP ${response.status} error on Key ${index + 1}. Instant failover to Key ${nextIndex + 1}...`,
-          });
-          continue; // 0ms delay immediately to next key
-        } else {
-          throw new Error(
-            `All configured Gemini API Keys failed. Last error: ${response.status}`
-          );
-        }
-      }
-
-      const data = await response.json();
-      const rawText =
-        data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-      if (!rawText) {
-        throw new Error('Gemini 3.6 Flash returned an empty response.');
-      }
-
-      // Parse JSON safely from returned content
-      const parsed = parseGeminiJsonResponse(rawText);
-
-      return {
-        merchant: parsed.merchant || 'Moroccan Merchant',
-        date: parsed.date || new Date().toISOString().split('T')[0],
-        total: Number(parsed.total) || 0,
-        paymentMethod: sanitizePaymentMethod(parsed.paymentMethod),
-        suggestedCategory: parsed.suggestedCategory || 'Food & Dining',
-        suggestedSubcategory:
-          parsed.suggestedSubcategory || 'Groceries (BIM / Marjane / Local Market)',
-        items: Array.isArray(parsed.items)
-          ? parsed.items.map((it: any) => ({
-              name: String(it.name || 'Item'),
-              price: Number(it.price) || 0,
-              quantity: Number(it.quantity) || 1,
-              category: it.category ? String(it.category) : undefined,
-            }))
-          : [],
-        rawText,
-        keyUsedIndex: index,
-      };
-    } catch (err: any) {
-      const errorMsg = err.message || String(err);
-      errors.push(`Key #${index + 1} Exception: ${errorMsg}`);
-
-      if (i < validKeys.length - 1) {
-        const nextIndex = validKeys[i + 1].index;
-        onFailover?.({
-          fromKeyIndex: index,
-          toKeyIndex: nextIndex,
-          errorMessage: `Network/API exception on Key ${index + 1}. Auto-switching to Key ${nextIndex + 1}...`,
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  { text: prompt },
+                  {
+                    inline_data: {
+                      mime_type: mimeType,
+                      data: base64Image,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 2048,
+            },
+          }),
         });
-        continue;
-      } else {
-        throw new Error(`Gemini Scanner Failover exhausted. ${errors.join(' | ')}`);
+
+        // 1. Permanent Auth failure (401 or 403) -> Do not waste time trying other models on this invalid key
+        if (response.status === 401 || response.status === 403) {
+          const errText = await response.text();
+          const reason = `Key #${keyIndex + 1} denied access (HTTP ${response.status}): ${errText.substring(0, 90)}`;
+          errors.push(reason);
+
+          if (kIdx < validKeys.length - 1) {
+            const nextKeyIndex = validKeys[kIdx + 1].index;
+            onFailover?.({
+              fromKeyIndex: keyIndex,
+              toKeyIndex: nextKeyIndex,
+              errorCode: response.status,
+              errorMessage: `Key #${keyIndex + 1} access denied. Switching to Key #${nextKeyIndex + 1}...`,
+            });
+          }
+          // Break model loop to advance immediately to next key
+          break;
+        }
+
+        // 2. High demand (503) or Rate Limit (429) -> Controlled delay before fallback
+        if (response.status === 503 || response.status === 429) {
+          const errText = await response.text();
+          const reason = `Key #${keyIndex + 1} (${model}) status ${response.status}: ${errText.substring(0, 90)}`;
+          errors.push(reason);
+
+          // If more models exist on this key, wait 1.5 seconds then try next model
+          if (mIdx < CANDIDATE_MODELS.length - 1) {
+            onFailover?.({
+              fromKeyIndex: keyIndex,
+              toKeyIndex: keyIndex,
+              modelUsed: CANDIDATE_MODELS[mIdx + 1],
+              errorCode: response.status,
+              errorMessage: `${model} busy (HTTP ${response.status}). Waiting 1.5s for ${CANDIDATE_MODELS[mIdx + 1]}...`,
+            });
+            await sleep(1500);
+            continue;
+          }
+
+          // If all models exhausted for this key, wait 1.5s and failover to next key
+          if (kIdx < validKeys.length - 1) {
+            const nextKeyIndex = validKeys[kIdx + 1].index;
+            onFailover?.({
+              fromKeyIndex: keyIndex,
+              toKeyIndex: nextKeyIndex,
+              errorCode: response.status,
+              errorMessage: `Key #${keyIndex + 1} temporary limit. Waiting 1.5s to switch to Key #${nextKeyIndex + 1}...`,
+            });
+            await sleep(1500);
+            break;
+          }
+
+          throw new Error(`Google Gemini service busy (503/429). Please try retry button in a moment.`);
+        }
+
+        // 3. Other HTTP error
+        if (!response.ok) {
+          const errText = await response.text();
+          errors.push(`Key #${keyIndex + 1} (${model}) HTTP ${response.status}: ${errText.substring(0, 80)}`);
+          if (mIdx < CANDIDATE_MODELS.length - 1) {
+            await sleep(1000);
+            continue;
+          }
+          break;
+        }
+
+        const data = await response.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+        if (!rawText) {
+          throw new Error(`${model} returned an empty response.`);
+        }
+
+        // Parse JSON safely from returned content
+        const parsed = parseGeminiJsonResponse(rawText);
+
+        return {
+          merchant: parsed.merchant || 'Moroccan Merchant',
+          date: parsed.date || new Date().toISOString().split('T')[0],
+          total: Number(parsed.total) || 0,
+          paymentMethod: sanitizePaymentMethod(parsed.paymentMethod),
+          suggestedCategory: parsed.suggestedCategory || 'Food & Dining',
+          suggestedSubcategory:
+            parsed.suggestedSubcategory || 'Groceries (BIM / Marjane / Local Market)',
+          items: Array.isArray(parsed.items)
+            ? parsed.items.map((it: any) => ({
+                name: String(it.name || 'Item'),
+                price: Number(it.price) || 0,
+                quantity: Number(it.quantity) || 1,
+                category: it.category ? String(it.category) : undefined,
+              }))
+            : [],
+          rawText,
+          keyUsedIndex: keyIndex,
+        };
+      } catch (err: any) {
+        const errorMsg = err.message || String(err);
+        errors.push(`Key #${keyIndex + 1} (${model}): ${errorMsg}`);
+
+        // If models remaining on this key, pause and try next
+        if (mIdx < CANDIDATE_MODELS.length - 1) {
+          await sleep(1000);
+          continue;
+        }
+        break;
       }
     }
   }
 
-  throw new Error(`Failed to scan receipt with all keys: ${errors.join(' | ')}`);
+  throw new Error(`Gemini Scanner Failover: ${errors.join(' | ')}`);
 }
 
 function parseGeminiJsonResponse(text: string): any {
