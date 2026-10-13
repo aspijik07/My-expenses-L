@@ -11,7 +11,8 @@ import { QuickAddModal } from './components/QuickAddModal';
 import { ReceiptScannerModal } from './components/ReceiptScannerModal';
 import { SettingsModal } from './components/SettingsModal';
 import { CategoryManagerModal } from './components/CategoryManagerModal';
-import { Sparkles } from 'lucide-react';
+import { CloudSyncModal } from './components/CloudSyncModal';
+import { Sparkles, Heart } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
   const { activeTab, currentUser } = useApp();
@@ -40,6 +41,7 @@ const MainAppContent: React.FC = () => {
       <ReceiptScannerModal />
       <SettingsModal />
       <CategoryManagerModal />
+      <CloudSyncModal />
 
       {/* Modern Pinterest Feminine Footer */}
       <footer className="mt-16 border-t border-pink-200/50 dark:border-slate-800/80 py-8 pb-28 xl:pb-8 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md">
@@ -49,18 +51,16 @@ const MainAppContent: React.FC = () => {
               My expenses-L
             </span>
             <span>•</span>
-            <span>She Budget Edition</span>
+            <span>Personal Smart Wallet</span>
             <span>•</span>
             <span className="text-pink-500 font-semibold">Moroccan Dirham (DH)</span>
           </div>
 
           <div className="flex items-center space-x-4">
-            <span className="inline-flex items-center space-x-1">
-              <Sparkles className="w-3.5 h-3.5 text-pink-500" />
-              <span>Gemini 3.6 Flash Multi-Key Rotation</span>
+            <span className="inline-flex items-center space-x-1.5 text-slate-400">
+              <Heart className="w-3.5 h-3.5 text-pink-500" />
+              <span>Designed with style</span>
             </span>
-            <span>•</span>
-            <span className="text-slate-400">Rabat Student Edition</span>
           </div>
         </div>
       </footer>

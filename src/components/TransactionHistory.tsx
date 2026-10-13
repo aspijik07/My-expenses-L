@@ -19,6 +19,7 @@ import {
   ShoppingBag,
   TrendingUp,
 } from 'lucide-react';
+import { CategoryIcon } from './CategoryIcon';
 
 export const TransactionHistory: React.FC = () => {
   const { transactions, deleteTransaction, setEditingTransaction, categories } = useApp();
@@ -185,7 +186,7 @@ export const TransactionHistory: React.FC = () => {
             >
               <option value="all">All Methods</option>
               <option value="Cash">Cash</option>
-              <option value="Card">Chaabi Card (BCP)</option>
+              <option value="Card">Card</option>
               <option value="Bank Transfer">Bank Transfer</option>
             </select>
           </div>
@@ -340,7 +341,7 @@ export const TransactionHistory: React.FC = () => {
                       {tx.type === 'income' ? (
                         <TrendingUp className="w-5 h-5" />
                       ) : (
-                        <ShoppingBag className="w-5 h-5" />
+                        <CategoryIcon category={tx.category} className="w-5 h-5" />
                       )}
                     </div>
 

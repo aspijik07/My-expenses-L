@@ -24,6 +24,7 @@ import {
   Edit2,
   Trash2,
 } from 'lucide-react';
+import { CategoryIcon } from './CategoryIcon';
 
 export const DashboardOverview: React.FC = () => {
   const {
@@ -71,40 +72,59 @@ export const DashboardOverview: React.FC = () => {
     .filter((t) => t.paymentMethod === 'Bank Transfer')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Group expenses by category for the donut chart and ranking list
+  // Group expenses by category with DISTINCT guaranteed colors
   const categorySpending = useMemo(() => {
-    const map = new Map<string, { total: number; color: string; count: number }>();
+    const map = new Map<string, { total: number; count: number }>();
     expenseTransactions.forEach((t) => {
-      const catDef = categories.find((c) => c.name === t.category);
-      const color = catDef?.color || '#FF85A1';
-      const existing = map.get(t.category) || { total: 0, color, count: 0 };
+      const existing = map.get(t.category) || { total: 0, count: 0 };
       map.set(t.category, {
         total: existing.total + t.amount,
-        color,
         count: existing.count + 1,
       });
     });
 
-    return Array.from(map.entries())
+    const DISTINCT_PALETTE = [
+      '#EC4899', // Hot Pink
+      '#8B5CF6', // Purple
+      '#F59E0B', // Amber Orange
+      '#06B6D4', // Cyan Blue
+      '#10B981', // Emerald Green
+      '#F43F5E', // Rose Coral
+      '#3B82F6', // Royal Blue
+      '#84CC16', // Lime Green
+      '#A855F7', // Violet
+      '#14B8A6', // Teal
+      '#E11D48', // Crimson Red
+      '#6366F1', // Indigo
+    ];
+
+    const sorted = Array.from(map.entries())
       .map(([name, data]) => ({
         name,
         total: data.total,
-        color: data.color,
         count: data.count,
         percentage: totalExpense > 0 ? (data.total / totalExpense) * 100 : 0,
       }))
       .sort((a, b) => b.total - a.total);
-  }, [expenseTransactions, categories, totalExpense]);
+
+    return sorted.map((cat, idx) => {
+      const distinctColor = DISTINCT_PALETTE[idx % DISTINCT_PALETTE.length];
+      return {
+        ...cat,
+        color: distinctColor,
+      };
+    });
+  }, [expenseTransactions, totalExpense]);
 
   const recentTransactions = transactions.slice(0, 5);
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-fadeIn relative pb-20">
-      {/* 1. TOP HERO CARD: Net Balance + Budget Progress + Payment Pills (Designed like the referenced image) */}
-      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 glass-card border border-pink-300/30 bg-gradient-to-br from-slate-900/95 via-slate-800/90 to-purple-950/40 dark:from-slate-900/95 dark:via-slate-800/90 dark:to-purple-950/40 shadow-xl space-y-5">
+      {/* 1. TOP HERO CARD: Net Balance + Budget Progress + Payment Pills */}
+      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 border border-pink-200/70 dark:border-pink-500/20 bg-white/95 dark:bg-gradient-to-br dark:from-slate-900/95 dark:via-slate-800/90 dark:to-purple-950/40 shadow-xl shadow-pink-500/5 space-y-5">
         {/* Top Net Balance Header */}
         <div className="space-y-2">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-pink-500/15 text-pink-500 text-[11px] font-extrabold uppercase tracking-wider border border-pink-400/20">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-pink-500/10 text-pink-600 dark:text-pink-400 text-[11px] font-extrabold uppercase tracking-wider border border-pink-400/20">
             <Wallet className="w-3.5 h-3.5" />
             <span>Net Balance</span>
           </div>
@@ -112,7 +132,7 @@ export const DashboardOverview: React.FC = () => {
           <div className="flex items-baseline space-x-2">
             <h2
               className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight ${
-                netBalance >= 0 ? 'text-white' : 'text-rose-400'
+                netBalance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-500 dark:text-rose-400'
               }`}
             >
               {netBalance >= 0 ? '+' : ''}
@@ -121,26 +141,26 @@ export const DashboardOverview: React.FC = () => {
             <span className="text-xl sm:text-2xl font-bold text-pink-500">DH</span>
           </div>
 
-          <p className="text-xs font-semibold text-slate-400">
+          <p className="text-xs font-semibold">
             {netBalance >= 0 ? (
-              <span className="text-emerald-400">Positive Liquidity • On Track</span>
+              <span className="text-emerald-600 dark:text-emerald-400">Positive Liquidity • On Track</span>
             ) : (
-              <span className="text-rose-400">Budget Alert: Deficit</span>
+              <span className="text-rose-500 dark:text-rose-400">Budget Alert: Deficit</span>
             )}
           </p>
         </div>
 
         {/* Monthly Budget Progress Bar inside the Hero Card */}
-        <div className="space-y-2 pt-1 border-t border-slate-700/60">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+        <div className="space-y-2 pt-1 border-t border-slate-200/80 dark:border-slate-700/60">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
             <span className="flex items-center space-x-1.5">
               <Target className="w-3.5 h-3.5 text-pink-500" />
               <span>Monthly Budget: {monthlyBudget.toLocaleString()} DH</span>
             </span>
-            <span className="font-bold text-pink-400">{budgetPercentUsed}% used</span>
+            <span className="font-bold text-pink-500 dark:text-pink-400">{budgetPercentUsed}% used</span>
           </div>
 
-          <div className="w-full h-2.5 bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-slate-700/60">
+          <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700/60">
             <div
               className={`h-full rounded-full transition-all duration-700 ease-out ${
                 budgetPercentUsed > 100
@@ -154,42 +174,42 @@ export const DashboardOverview: React.FC = () => {
           </div>
         </div>
 
-        {/* 3 Payment Method Pills inside Hero Card (Clean Cash, Card, Bank App) */}
+        {/* 3 Payment Method Pills inside Hero Card */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2">
           {/* Cash Pill */}
-          <div className="flex flex-col sm:flex-row items-center sm:space-x-2 p-2.5 rounded-2xl bg-slate-800/80 border border-slate-700/70 text-center sm:text-left">
-            <div className="w-7 h-7 rounded-xl bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0 mb-1 sm:mb-0">
-              <Banknote className="w-3.5 h-3.5" />
+          <div className="flex flex-col sm:flex-row items-center sm:space-x-2.5 p-2.5 sm:p-3 rounded-2xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 text-center sm:text-left transition-all">
+            <div className="w-8 h-8 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center shrink-0 mb-1 sm:mb-0">
+              <Banknote className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <span className="block text-[10px] font-semibold text-slate-400 truncate">Cash</span>
-              <span className="block text-xs font-bold text-white truncate">
+              <span className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">Cash</span>
+              <span className="block text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white truncate">
                 {cashExpenses.toFixed(2)} DH
               </span>
             </div>
           </div>
 
           {/* Card Pill */}
-          <div className="flex flex-col sm:flex-row items-center sm:space-x-2 p-2.5 rounded-2xl bg-slate-800/80 border border-slate-700/70 text-center sm:text-left">
-            <div className="w-7 h-7 rounded-xl bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0 mb-1 sm:mb-0">
-              <CreditCard className="w-3.5 h-3.5" />
+          <div className="flex flex-col sm:flex-row items-center sm:space-x-2.5 p-2.5 sm:p-3 rounded-2xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 text-center sm:text-left transition-all">
+            <div className="w-8 h-8 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center shrink-0 mb-1 sm:mb-0">
+              <CreditCard className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <span className="block text-[10px] font-semibold text-slate-400 truncate">Card</span>
-              <span className="block text-xs font-bold text-white truncate">
+              <span className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">Card</span>
+              <span className="block text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white truncate">
                 {cardExpenses.toFixed(2)} DH
               </span>
             </div>
           </div>
 
           {/* Bank App Pill */}
-          <div className="flex flex-col sm:flex-row items-center sm:space-x-2 p-2.5 rounded-2xl bg-slate-800/80 border border-slate-700/70 text-center sm:text-left">
-            <div className="w-7 h-7 rounded-xl bg-pink-500/15 text-pink-500 flex items-center justify-center shrink-0 mb-1 sm:mb-0">
-              <ArrowRightLeft className="w-3.5 h-3.5" />
+          <div className="flex flex-col sm:flex-row items-center sm:space-x-2.5 p-2.5 sm:p-3 rounded-2xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 text-center sm:text-left transition-all">
+            <div className="w-8 h-8 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center shrink-0 mb-1 sm:mb-0">
+              <ArrowRightLeft className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <span className="block text-[10px] font-semibold text-slate-400 truncate">Bank App</span>
-              <span className="block text-xs font-bold text-white truncate">
+              <span className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">Bank App</span>
+              <span className="block text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white truncate">
                 {transferExpenses.toFixed(2)} DH
               </span>
             </div>
@@ -317,12 +337,18 @@ export const DashboardOverview: React.FC = () => {
               {categorySpending.map((cat, idx) => (
                 <div key={idx} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs font-semibold">
-                    <div className="flex items-center space-x-2">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: cat.color }}
-                      />
-                      <span className="text-slate-800 dark:text-slate-200">{cat.name}</span>
+                    <div className="flex items-center space-x-2.5">
+                      <div
+                        className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0 border"
+                        style={{
+                          backgroundColor: `${cat.color}18`,
+                          borderColor: `${cat.color}35`,
+                          color: cat.color,
+                        }}
+                      >
+                        <CategoryIcon category={cat.name} className="w-3.5 h-3.5" color={cat.color} />
+                      </div>
+                      <span className="text-slate-800 dark:text-slate-200 font-semibold">{cat.name}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className="font-bold text-slate-900 dark:text-white">
@@ -378,25 +404,38 @@ export const DashboardOverview: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2.5">
-            {recentTransactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 hover:border-pink-300/60 transition-all"
-              >
-                <div className="flex items-center space-x-3 min-w-0 pr-2">
-                  <div
-                    className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                      tx.type === 'income'
-                        ? 'bg-emerald-500/10 text-emerald-500'
-                        : 'bg-pink-500/10 text-pink-500'
-                    }`}
-                  >
-                    {tx.type === 'income' ? (
-                      <TrendingUp className="w-5 h-5" />
-                    ) : (
-                      <ShoppingBag className="w-5 h-5" />
-                    )}
-                  </div>
+            {recentTransactions.map((tx) => {
+              const matchedColor =
+                categorySpending.find((c) => c.name === tx.category)?.color || '#EC4899';
+
+              return (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 hover:border-pink-300/60 transition-all"
+                >
+                  <div className="flex items-center space-x-3 min-w-0 pr-2">
+                    <div
+                      className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border"
+                      style={
+                        tx.type === 'income'
+                          ? {
+                              backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                              color: '#10B981',
+                              borderColor: 'rgba(16, 185, 129, 0.25)',
+                            }
+                          : {
+                              backgroundColor: `${matchedColor}15`,
+                              color: matchedColor,
+                              borderColor: `${matchedColor}30`,
+                            }
+                      }
+                    >
+                      {tx.type === 'income' ? (
+                        <TrendingUp className="w-5 h-5" />
+                      ) : (
+                        <CategoryIcon category={tx.category} className="w-5 h-5" color={matchedColor} />
+                      )}
+                    </div>
 
                   <div className="truncate">
                     <div className="flex items-center space-x-2">
@@ -448,8 +487,9 @@ export const DashboardOverview: React.FC = () => {
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
         )}
       </div>
 

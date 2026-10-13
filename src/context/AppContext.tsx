@@ -65,6 +65,8 @@ interface AppContextType {
   setIsSettingsOpen: (open: boolean) => void;
   isCategoryManagerOpen: boolean;
   setIsCategoryManagerOpen: (open: boolean) => void;
+  isCloudSyncOpen: boolean;
+  setIsCloudSyncOpen: (open: boolean) => void;
   editingTransaction: Transaction | null;
   setEditingTransaction: (tx: Transaction | null) => void;
   exportDataToJson: () => void;
@@ -227,6 +229,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   // 6. Username / Password Authentication Gate State
@@ -822,6 +825,8 @@ const MASTER_OWNER = {
         setIsSettingsOpen,
         isCategoryManagerOpen,
         setIsCategoryManagerOpen,
+        isCloudSyncOpen,
+        setIsCloudSyncOpen,
         editingTransaction,
         setEditingTransaction,
         exportDataToJson,

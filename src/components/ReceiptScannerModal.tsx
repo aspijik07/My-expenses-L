@@ -186,7 +186,7 @@ export const ReceiptScannerModal: React.FC = () => {
     ctx.font = 'bold 24px monospace';
     ctx.textAlign = 'center';
 
-    let merchantName = 'BIM STORES AGDAL (RABAT)';
+    let merchantName = 'BIM SUPERMARKET';
     let totalText = 'TOTAL: 185.50 DH';
     let dateText = `DATE: ${new Date().toISOString().split('T')[0]}`;
     let items = [
@@ -197,7 +197,7 @@ export const ReceiptScannerModal: React.FC = () => {
     ];
 
     if (sampleType === 'marjane') {
-      merchantName = 'MARJANE HAY RIAD (RABAT)';
+      merchantName = 'MARJANE MARKET';
       totalText = 'TOTAL: 340.00 DH';
       items = [
         '1. Fresh Fruits & Vegetables 120.00 DH',
@@ -206,15 +206,15 @@ export const ReceiptScannerModal: React.FC = () => {
         '4. Dark Chocolate & Tea       40.00 DH',
       ];
     } else if (sampleType === 'redal') {
-      merchantName = 'REDAL RABAT UTILITIES';
+      merchantName = 'CARREFOUR MARKET';
       totalText = 'AMOUNT: 215.40 DH';
       items = [
-        '1. Electricity Consumption   145.20 DH',
-        '2. Water Consumption          55.20 DH',
-        '3. Municipal Sanitation Taxes 15.00 DH',
+        '1. Olive Oil & Moroccan Tea   145.20 DH',
+        '2. Snacks & Juices             55.20 DH',
+        '3. Paper Towels & Cleaners     15.00 DH',
       ];
     } else if (sampleType === 'oncf') {
-      merchantName = 'ONCF TRAIN (RABAT AGDAL)';
+      merchantName = 'ONCF TRAIN EXPRESS';
       totalText = 'TICKET PRICE: 149.00 DH';
       items = [
         '1. Al Boraq High Speed Train 149.00 DH',
@@ -229,7 +229,7 @@ export const ReceiptScannerModal: React.FC = () => {
 
     ctx.fillText(merchantName, 300, 70);
     ctx.font = '16px monospace';
-    ctx.fillText('RABAT, MOROCCO', 300, 100);
+    ctx.fillText('MAROC', 300, 100);
     ctx.fillText(dateText, 300, 130);
     ctx.fillText('--------------------------------', 300, 160);
 
@@ -343,7 +343,7 @@ export const ReceiptScannerModal: React.FC = () => {
       bankName: scanResult.paymentMethod === 'Card' ? 'Banque Populaire (Chaabi Bank)' : undefined,
       merchant: scanResult.merchant,
       date: scanResult.date,
-      notes: `Scanned via Gemini 3.6 Flash (Key #${scanResult.keyUsedIndex + 1})`,
+      notes: 'Scanned receipt ticket',
       items: scanResult.items,
       batchId,
       batchColor: batchColorHex,
@@ -369,20 +369,15 @@ export const ReceiptScannerModal: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800/80">
           <div className="flex items-center space-x-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-lavender-500 to-rosegold-400 text-white flex items-center justify-center shadow-glow-lavender">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-500 text-white flex items-center justify-center shadow-md">
               <Camera className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Gemini 3.6 Flash OCR Scanner
-                </h2>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-lavender-500/10 text-lavender-500 border border-lavender-500/30">
-                  Model: gemini-3.6-flash
-                </span>
-              </div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                Receipt Scanner
+              </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Moroccan Supermarkets (BIM, Marjane, Carrefour) & Utilities (Lydec, Inwi, ONEE)
+                Instant smart scan for Moroccan store & supermarket tickets
               </p>
             </div>
           </div>
@@ -394,75 +389,6 @@ export const ReceiptScannerModal: React.FC = () => {
             <X className="w-5 h-5" />
           </button>
         </div>
-
-        {/* 4 API Key Failover Rotation Visual Status Bar */}
-        <div className="mt-4 p-3.5 rounded-2xl bg-slate-100/90 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              <ShieldCheck className="w-4 h-4 text-lavender-500" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Dynamic 4-Key Failover Engine (0ms Delay)
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                setIsScannerOpen(false);
-                setIsSettingsOpen(true);
-              }}
-              className="text-[11px] font-bold text-rosegold-500 hover:text-rosegold-400 flex items-center space-x-1"
-            >
-              <Sliders className="w-3 h-3" />
-              <span>Manage Keys</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-4 gap-2">
-            {configuredKeys.map(({ index, hasKey }) => {
-              const isCurrent = isScanning && activeKeyAttempt === index;
-              const isSuccess = scanResult && scanResult.keyUsedIndex === index;
-
-              return (
-                <div
-                  key={index}
-                  className={`p-2 rounded-xl border text-center transition-all ${
-                    isSuccess
-                      ? 'border-emerald-500 bg-emerald-500/10 text-emerald-500 font-bold'
-                      : isCurrent
-                      ? 'border-lavender-500 bg-lavender-500/10 text-lavender-500 font-bold animate-pulse'
-                      : hasKey
-                      ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                      : 'border-dashed border-slate-300 dark:border-slate-700 opacity-40 text-slate-400'
-                  }`}
-                >
-                  <span className="block text-[11px] font-extrabold">Slot #{index + 1}</span>
-                  <span className="block text-[9px] truncate">
-                    {isSuccess
-                      ? 'Processed ✓'
-                      : isCurrent
-                      ? 'Active...'
-                      : hasKey
-                      ? 'Standby'
-                      : 'Unconfigured'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Dynamic Failover Alert Banner */}
-        {failoverLogs.length > 0 && (
-          <div className="mt-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs space-y-1">
-            {failoverLogs.map((log, i) => (
-              <div key={i} className="flex items-center space-x-1.5 font-medium">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin inline flex-shrink-0" />
-                <span>
-                  Key #{log.fromKeyIndex + 1} quota/auth fail. Instant 0ms failover to Key #{log.toKeyIndex + 1}...
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Error message */}
         {errorMessage && (
@@ -478,46 +404,78 @@ export const ReceiptScannerModal: React.FC = () => {
               }}
               className="text-xs font-bold underline ml-2"
             >
-              Add Gemini Key
+              Add API Key
             </button>
           </div>
         )}
 
-        {/* Upload & Capture Zone */}
+        {/* Upload & Capture Zone - Split into 2 stylish cards */}
         {!scanResult && (
           <div className="mt-5 space-y-4">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="group border-2 border-dashed border-rosegold-400/40 hover:border-rosegold-400 rounded-3xl p-8 text-center cursor-pointer bg-rosegold-400/5 hover:bg-rosegold-400/10 transition-all"
-            >
-              <div className="mx-auto w-14 h-14 rounded-2xl bg-rosegold-400/15 text-rosegold-500 flex items-center justify-center group-hover:scale-105 transition-transform">
-                {isScanning || isCompressing ? (
+            {isScanning || isCompressing ? (
+              <div className="border-2 border-pink-400/40 rounded-3xl p-10 text-center bg-pink-500/5 space-y-3">
+                <div className="mx-auto w-14 h-14 rounded-2xl bg-pink-500/15 text-pink-500 flex items-center justify-center">
                   <Loader2 className="w-7 h-7 animate-spin" />
-                ) : (
-                  <UploadCloud className="w-7 h-7" />
-                )}
+                </div>
+                <p className="text-sm font-bold text-slate-800 dark:text-white">
+                  {isCompressing
+                    ? 'Optimizing image...'
+                    : 'Analyzing ticket details...'}
+                </p>
+                <p className="text-xs text-slate-400">
+                  Reading store name, date, items, and total DH...
+                </p>
               </div>
-              <p className="mt-3 text-sm font-bold text-slate-800 dark:text-white">
-                {isCompressing
-                  ? 'Compressing to 80KB on Canvas...'
-                  : isScanning
-                  ? 'Gemini 3.6 Flash analyzing receipt...'
-                  : 'Click or drag Moroccan receipt photo here'}
-              </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Supports BIM, Marjane, Carrefour receipts & utility invoices (JPG, PNG)
-              </p>
-
-              {/* Canvas Compression Info */}
-              {compressedSizeKB > 0 && (
-                <div className="mt-3 inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[11px] font-semibold">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>
-                    Canvas Compressed: {originalSizeKB} KB → {compressedSizeKB} KB (Sub-second payload)
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* 1. Direct Camera Scan Card */}
+                <div
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="group relative flex flex-col items-center justify-center p-7 rounded-3xl border-2 border-dashed border-pink-400/50 hover:border-pink-500 bg-pink-500/5 hover:bg-pink-500/10 transition-all cursor-pointer text-center space-y-3"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 text-white flex items-center justify-center shadow-lg shadow-pink-500/20 group-hover:scale-105 transition-transform">
+                    <Camera className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Scan with Camera
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Snap photo directly with your camera
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-pink-500/15 text-pink-600 dark:text-pink-300 border border-pink-500/20">
+                    Open Camera
                   </span>
                 </div>
-              )}
-            </div>
+
+                {/* 2. Upload / Drag Ticket Card */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files?.[0]) processAndScanImage(e.dataTransfer.files[0]);
+                  }}
+                  className="group relative flex flex-col items-center justify-center p-7 rounded-3xl border-2 border-dashed border-purple-400/50 hover:border-purple-500 bg-purple-500/5 hover:bg-purple-500/10 transition-all cursor-pointer text-center space-y-3"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:scale-105 transition-transform">
+                    <UploadCloud className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Upload or Drag Ticket
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Choose receipt image from gallery or files
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/20">
+                    Browse Files
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Hidden native inputs */}
             <input
@@ -540,52 +498,42 @@ export const ReceiptScannerModal: React.FC = () => {
               }}
             />
 
-            {/* Quick Action buttons */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => cameraInputRef.current?.click()}
-                className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-rosegold-400 transition-all shadow-sm"
-              >
-                <Camera className="w-4 h-4 text-rosegold-400" />
-                <span>Snap with Camera</span>
-              </button>
-
-              {/* Quick Sample Receipts */}
-              <div className="flex items-center space-x-2">
-                <span className="text-xs text-slate-400">Quick Test:</span>
+            {/* Quick Sample Receipts for testing */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span className="text-xs text-slate-400 font-medium">Quick Test Sample:</span>
+              <div className="flex items-center space-x-1.5">
                 <button
                   type="button"
                   onClick={() => loadSampleReceipt('bim')}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rosegold-400/10 hover:bg-rosegold-400/20 text-rosegold-500 border border-rosegold-400/20"
+                  className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-300 border border-pink-400/20 cursor-pointer"
                 >
                   BIM
                 </button>
                 <button
                   type="button"
                   onClick={() => loadSampleReceipt('marjane')}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-lavender-500/10 hover:bg-lavender-500/20 text-lavender-500 border border-lavender-500/20"
+                  className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-400/20 cursor-pointer"
                 >
                   Marjane
                 </button>
                 <button
                   type="button"
                   onClick={() => loadSampleReceipt('redal')}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/20"
+                  className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-400/20 cursor-pointer"
                 >
-                  Redal
+                  Carrefour
                 </button>
                 <button
                   type="button"
                   onClick={() => loadSampleReceipt('oncf')}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 border border-teal-500/20"
+                  className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-300 border border-teal-400/20 cursor-pointer"
                 >
-                  ONCF Train
+                  Train
                 </button>
                 <button
                   type="button"
                   onClick={() => loadSampleReceipt('inwi')}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 border border-purple-500/20"
+                  className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-400/20 cursor-pointer"
                 >
                   Inwi
                 </button>
@@ -600,7 +548,7 @@ export const ReceiptScannerModal: React.FC = () => {
             <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
               <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
                 <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                <span>Extracted Successfully via Gemini 3.6 Flash (Key Slot #{scanResult.keyUsedIndex + 1})</span>
+                <span>Extracted Successfully • Ready to review and save</span>
               </div>
               <button
                 onClick={() => {
